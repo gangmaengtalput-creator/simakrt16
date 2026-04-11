@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardKetua() {
   const router = useRouter();
   
