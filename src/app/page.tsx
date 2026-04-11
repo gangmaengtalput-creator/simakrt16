@@ -1,168 +1,284 @@
+"use client";
+
 import Link from 'next/link';
-import Image from 'next/image'; // Impor komponen Image Next.js
+import Image from 'next/image';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient'; 
 
 export default function Home() {
+  const [usulanTerbaru, setUsulanTerbaru] = useState<any[]>([]);
+  const [isLoadingUsulan, setIsLoadingUsulan] = useState(true);
+
+  useEffect(() => {
+    fetchUsulanTerbaru();
+  }, []);
+
+  const fetchUsulanTerbaru = async () => {
+    // Mengambil usulan dari yang terbaru ke paling lama (descending)
+    const { data, error } = await supabase
+      .from('usulan_warga')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(8); 
+      
+    if (!error && data) {
+      setUsulanTerbaru(data);
+    }
+    setIsLoadingUsulan(false);
+  };
+
+  // Fallback untuk membaca foto warga (karena berbentuk array)
+  const getFotoWarga = (fotoData: any) => {
+    if (!fotoData) return 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
+    let parsedArray = [];
+    if (Array.isArray(fotoData)) {
+      parsedArray = fotoData;
+    } else {
+      try {
+        const parsed = JSON.parse(fotoData);
+        parsedArray = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        parsedArray = typeof fotoData === 'string' ? [fotoData] : [];
+      }
+    }
+    return parsedArray.length > 0 ? parsedArray[0] : 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       
-      {/* --- NAVBAR (NAVIGASI ATAS) --- */}
+      {/* --- NAVBAR --- */}
       <nav className="bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
-            
-            {/* --- PEMBARUAN: Logo Garuda & Judul --- */}
             <div className="flex items-center gap-4">
-              {/* Kotak Logo Baru */}
               <div className="p-1">
                 <Image 
-                  src="/logo_garuda.jpeg" // Pastikan file ada di folder public/
+                  src="/logo_garuda.jpeg" 
                   alt="Logo Garuda Pancasila"
-                  width={50} // Ukuran di navbar
+                  width={50} 
                   height={50}
                   className="object-contain"
                 />
               </div>
-              {/* Tulisan Judul */}
               <div>
                 <span className="font-extrabold text-2xl text-gray-800 tracking-tight">SIMAK<span className="text-blue-600">RT</span></span>
                 <p className="text-xs text-gray-500 font-medium">RT.16 Kel. Talangputri</p>
               </div>
             </div>
             
-            {/* Tombol Login */}
             <div>
-              <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2">
-                <span>Masuk Dasbor</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+              <Link href="/login" className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 shadow-sm transition-colors">
+                Masuk / Daftar Akun
               </Link>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* --- HERO SECTION (BAGIAN UTAMA) --- */}
-      <main className="flex-grow">
-        <div className="relative bg-white overflow-hidden">
-          <div className="max-w-7xl mx-auto">
-            <div className="relative z-10 pb-8 bg-white sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32 pt-16 px-4 sm:px-6 lg:px-8">
-              <div className="sm:text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm mb-6 border border-blue-100">
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                  </span>
-                  Digitalisasi Pelayanan Warga Resmi
-                </div>
-                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl leading-tight">
-                  <span className="block xl:inline">Sistem Informasi</span>{' '}
-                  <span className="block text-blue-600 xl:inline">Manajemen Kependudukan</span>
-                </h1>
-                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  Platform digital resmi untuk pengurus RT.16 RW.04 Kelurahan Talangputri. Kelola data warga, pantau demografi, dan terbitkan surat keterangan dengan cepat, aman, dan akurat sesuai standar pelayanan publik.
-                </p>
-                <div className="mt-8 sm:mt-12 flex gap-4 sm:justify-center lg:justify-start">
-                  <Link href="/login" className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 sm:w-auto">
-                    Mulai Bekerja
-                  </Link>
-                  <a href="#fitur" className="w-full flex items-center justify-center px-8 py-3 border-2 border-gray-200 text-base font-bold rounded-lg text-gray-700 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10 transition-all sm:w-auto">
-                    Pelajari Fitur
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* --- PEMBARUAN: Grafis Hero dengan Logo Garuda Besar --- */}
-          <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2 bg-blue-50 flex items-center justify-center p-12">
-            <div className="grid grid-cols-2 gap-4 transform rotate-3 scale-105 items-center">
-              
-              {/* Kotak Putih Berisi Logo Garuda Besar */}
-              <div className="bg-white p-6 rounded-3xl shadow-2xl border-4 border-gray-100 flex items-center justify-center col-span-1 row-span-2">
-                <Image 
-                  src="/logo_garuda.jpeg"
-                  alt="Lambang Garuda Pancasila Besar"
-                  width={200} // Ukuran besar di hero area
-                  height={200}
-                  className="object-contain"
-                />
-              </div>
-
-              {/* Kotak Dekoratif Pengiring */}
-              <div className="bg-indigo-500 w-32 h-40 rounded-2xl shadow-xl opacity-80 mt-12"></div>
-              <div className="bg-teal-400 w-40 h-32 rounded-2xl shadow-xl opacity-90 -mt-12"></div>
+      {/* --- MAIN CONTENT --- */}
+      <main className="flex-1">
+        
+        {/* 1. HERO SECTION */}
+        <div className="bg-gradient-to-b from-blue-50 to-white py-16 sm:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-4">
+              Selamat Datang di <span className="text-blue-600">Portal RT.16</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg sm:text-xl text-gray-500 mx-auto mb-8">
+              Sistem Informasi Terpadu RT.16 Kelurahan Talangputri. Akses layanan persuratan dan sampaikan usulan lingkungan Anda secara digital dengan cepat dan transparan.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Link href="/login" className="bg-blue-600 text-white px-8 py-3.5 rounded-xl font-extrabold text-lg shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all transform hover:-translate-y-0.5">
+                Masuk / Daftar Akun
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* --- FITUR SECTION (Sama seperti sebelumnya) --- */}
-        <div id="fitur" className="py-20 bg-gray-50">
+        {/* 2. USULAN WARGA (KARTU GESER INTERAKTIF LENGKAP) */}
+        <section className="py-16 bg-white border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <h2 className="text-base text-blue-600 font-bold tracking-wide uppercase">Keunggulan Sistem</h2>
-              <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-                Cara Baru Mengelola Administrasi RT
-              </p>
-              <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-                Tinggalkan cara lama yang memakan waktu. SIMAK RT membawa kemudahan pengelolaan data ke dalam genggaman Anda dengan standar resmi.
-              </p>
+            <div className="flex justify-between items-end mb-8">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Suara & Usulan Warga</h2>
+                <p className="text-gray-500 mt-2 text-sm sm:text-base">Transparansi aspirasi dan progres lingkungan RT.16 terbaru.</p>
+              </div>
             </div>
 
-            <div className="mt-16">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                {/* Fitur 1 */}
-                <div className="bg-white rounded-2xl shadow-md p-8 border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+            {/* Container Swipe Horizontal */}
+            {isLoadingUsulan ? (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="min-w-[320px] h-[450px] bg-gray-100 rounded-2xl animate-pulse shrink-0"></div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory no-scrollbar cursor-grab active:cursor-grabbing scroll-smooth">
+                {usulanTerbaru.map((usulan) => (
+                  <div key={usulan.id} className="min-w-[320px] w-[320px] sm:min-w-[380px] sm:w-[380px] bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow snap-center shrink-0 flex flex-col overflow-hidden">
+                    
+                    {/* FOTO USULAN WARGA (HEADER) */}
+                    <div className="relative h-48 bg-gray-200">
+                      <img 
+                        src={getFotoWarga(usulan.foto_usulan)} 
+                        alt="Foto Usulan Warga" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x250?text=Gambar+Rusak' }}
+                      />
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[10px] px-3 py-1.5 rounded-full font-bold tracking-wider uppercase shadow-md">
+                        {usulan.jenis_usulan}
+                      </div>
+                      <div className={`absolute top-3 right-3 text-[10px] px-3 py-1.5 rounded-full font-bold shadow-md text-white ${usulan.status === 'Telah Ditindaklanjuti' ? 'bg-green-500' : usulan.status === 'Ditolak' ? 'bg-red-500' : 'bg-yellow-500'}`}>
+                        {usulan.status}
+                      </div>
+                    </div>
+                    
+                    {/* DETAIL USULAN WARGA */}
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-semibold text-gray-500">
+                          {new Date(usulan.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                          Oleh: {usulan.nama_pengusul.split(' ')[0]}
+                        </span>
+                      </div>
+                      
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight line-clamp-1">
+                        {usulan.nama_usulan || `Usulan ${usulan.jenis_usulan}`}
+                      </h3>
+                      
+                      <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+                        {usulan.keterangan}
+                      </p>
+                      
+                      {/* MANAJEMEN USULAN (TANGGAPAN KETUA RT) */}
+                      <div className="mt-auto pt-4 border-t border-gray-100">
+                        {usulan.status === 'Menunggu Tinjauan RT' ? (
+                           <div className="text-center py-2 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                             <span className="text-xs font-bold text-gray-400">⏳ Menunggu Respon Ketua RT</span>
+                           </div>
+                        ) : (
+                           <div className="bg-green-50 p-3 rounded-xl border border-green-100">
+                             <h4 className="text-[10px] font-bold text-green-800 uppercase tracking-wider mb-2 border-b border-green-200 pb-1">
+                               Tanggapan Ketua RT
+                             </h4>
+                             
+                             {/* Catatan Ketua RT */}
+                             <p className="text-xs text-gray-700 italic mb-2 line-clamp-2">
+                               {usulan.catatan_rt ? `"${usulan.catatan_rt}"` : "Status usulan telah diperbarui."}
+                             </p>
+
+                             {/* Foto Bukti RT (Jika Ada) */}
+                             {usulan.foto_tindak_lanjut && (
+                               <div className="flex items-center gap-3 bg-white p-1.5 rounded-lg border border-green-100 shadow-sm">
+                                 <img 
+                                   src={usulan.foto_tindak_lanjut} 
+                                   className="w-10 h-10 object-cover rounded" 
+                                   alt="Foto RT" 
+                                   onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/50?text=Error' }}
+                                 />
+                                 <a href={usulan.foto_tindak_lanjut} target="_blank" rel="noreferrer" className="text-[10px] text-green-700 font-bold hover:underline flex-1">
+                                   Lihat Foto Bukti RT &rarr;
+                                 </a>
+                               </div>
+                             )}
+                           </div>
+                        )}
+                      </div>
+
+                    </div>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Database Terpusat Aman</h3>
-                  <p className="text-gray-500 leading-relaxed">
-                    Seluruh data KK, NIK, dan profil warga tersimpan aman di Cloud sesuai standar privasi. Cari data warga dalam hitungan detik.
-                  </p>
-                </div>
-                {/* Fitur 2 */}
-                <div className="bg-white rounded-2xl shadow-md p-8 border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center mb-6">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                ))}
+
+                {usulanTerbaru.length === 0 && !isLoadingUsulan && (
+                  <div className="w-full py-12 text-center text-gray-500 border-2 border-dashed border-gray-300 rounded-2xl">
+                    Belum ada usulan warga yang dipublikasikan.
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Surat Otomatis Resmi</h3>
-                  <p className="text-gray-500 leading-relaxed">
-                    Generator surat keterangan terintegrasi menghasilkan dokumen siap cetak dengan format resmi kelurahan yang akurat.
-                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 text-center">
+              <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-800 font-bold rounded-lg hover:bg-gray-200 transition-colors">
+                Lihat Semua Usulan <span>&rarr;</span>
+              </Link>
+              <p className="text-xs text-gray-400 mt-2">*Login warga diperlukan untuk melihat seluruh interaksi detail.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. STRUKTUR PENGURUS RT 16 (BAGAN) */}
+        <section className="py-16 bg-gradient-to-b from-gray-50 to-gray-100 border-t">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Struktur Pengurus RT.16</h2>
+            <p className="text-gray-500 mb-12">Siap melayani dan membangun lingkungan bersama warga.</p>
+
+            {/* Tree Container */}
+            <div className="flex flex-col items-center">
+              
+              {/* LEVEL 1: KETUA */}
+              <div className="relative flex flex-col items-center z-10">
+                <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center border-4 border-white shadow-xl mb-3">
+                  <span className="text-3xl text-white font-extrabold">G</span>
                 </div>
-                {/* Fitur 3 */}
-                <div className="bg-white rounded-2xl shadow-md p-8 border border-gray-100 hover:shadow-xl transition-shadow">
-                  <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-6">
-                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                <h3 className="text-xl font-bold text-gray-800">Guntur</h3>
+                <p className="text-sm font-extrabold text-blue-600 tracking-widest uppercase">Ketua RT</p>
+              </div>
+
+              {/* GARIS PENGHUBUNG (Desktop & Mobile) */}
+              <div className="relative w-full max-w-[280px] sm:max-w-md h-12">
+                <div className="absolute top-0 left-1/2 w-0.5 h-6 bg-gray-300 -translate-x-1/2"></div>
+                <div className="absolute top-6 left-0 w-full h-0.5 bg-gray-300"></div>
+                <div className="absolute top-6 left-0 w-0.5 h-6 bg-gray-300"></div>
+                <div className="absolute top-6 right-0 w-0.5 h-6 bg-gray-300"></div>
+              </div>
+
+              {/* LEVEL 2: SEKRETARIS & BENDAHARA */}
+              <div className="flex justify-between w-full max-w-[340px] sm:max-w-[500px] z-10">
+                
+                {/* SEKRETARIS */}
+                <div className="flex flex-col items-center">
+                  <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-white shadow-xl mb-3">
+                    <span className="text-2xl text-white font-extrabold">S</span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Statistik Demografi</h3>
-                  <p className="text-gray-500 leading-relaxed">
-                    Pantau grafik demografi warga secara real-time untuk pendataan yang lebih baik, mencakup distribusi usia dan jenis kelamin.
-                  </p>
+                  <h3 className="text-lg font-bold text-gray-800">Santo</h3>
+                  <p className="text-xs font-extrabold text-emerald-600 tracking-widest uppercase">Sekretaris</p>
                 </div>
+
+                {/* BENDAHARA */}
+                <div className="flex flex-col items-center">
+                  <div className="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center border-4 border-white shadow-xl mb-3">
+                    <span className="text-2xl text-white font-extrabold">M</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Mega</h3>
+                  <p className="text-xs font-extrabold text-amber-600 tracking-widest uppercase">Bendahara</p>
+                </div>
+
               </div>
             </div>
           </div>
-        </div>
+        </section>
+
       </main>
 
-      {/* --- FOOTER (Sama seperti sebelumnya) --- */}
+      {/* --- FOOTER --- */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
             <span className="font-extrabold text-2xl tracking-tight text-white">SIMAK<span className="text-blue-500">RT</span></span>
-            <p className="mt-2 text-gray-400 text-sm">Sistem Informasi Manajemen Kependudukan Resmi</p>
+            <p className="mt-2 text-gray-400 text-sm">Sistem Informasi Manajemen Kependudukan RT</p>
           </div>
-          <div className="text-gray-400 text-sm">
+          <div className="text-gray-400 text-sm text-center md:text-left">
             <p className="font-bold text-gray-300">RT.16 RW.04 Kelurahan Talangputri</p>
             <p>Kecamatan Plaju, Kota Palembang, Sumatera Selatan</p>
           </div>
           <div className="text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} Hak Cipta Dilindungi.<br/>
-            Dibuat untuk pelayanan warga yang lebih baik dan transparan.
+            &copy; {new Date().getFullYear()} Hak Cipta Dilindungi.
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
