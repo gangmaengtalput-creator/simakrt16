@@ -12,9 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Metadata Proyek
 export const metadata: Metadata = {
-  title: "Gang Maeng",
-  description: "Ketua RT 16 Guntur Bayu Jantoro",
+  title: "SIMAKRT - Portal RT 16",
+  description: "Sistem Informasi Manajemen Kependudukan RT.16 Kelurahan Talangputri",
 };
 
 export default function RootLayout({
@@ -24,10 +25,16 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* Body sekarang 'Fixed' (Tetap):
+          - bg-white: Latar belakang selalu putih.
+          - text-gray-900: Tulisan selalu hitam pekat.
+      */}
+      <body className="min-h-full flex flex-col bg-white text-gray-900 antialiased">
+        {children}
+      </body>
     </html>
   );
 }

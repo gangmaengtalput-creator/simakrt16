@@ -14,7 +14,6 @@ export default function Home() {
   }, []);
 
   const fetchUsulanTerbaru = async () => {
-    // Mengambil usulan dari yang terbaru ke paling lama (descending)
     const { data, error } = await supabase
       .from('usulan_warga')
       .select('*')
@@ -27,7 +26,6 @@ export default function Home() {
     setIsLoadingUsulan(false);
   };
 
-  // Fallback untuk membaca foto warga (karena berbentuk array)
   const getFotoWarga = (fotoData: any) => {
     if (!fotoData) return 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
     let parsedArray = [];
@@ -69,7 +67,7 @@ export default function Home() {
             
             <div>
               <Link href="/login" className="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-blue-700 shadow-sm transition-colors">
-                Masuk / Daftar Akun
+                Masuk
               </Link>
             </div>
           </div>
@@ -79,18 +77,31 @@ export default function Home() {
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1">
         
-        {/* 1. HERO SECTION */}
-        <div className="bg-gradient-to-b from-blue-50 to-white py-16 sm:py-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        {/* 1. HERO SECTION DENGAN LOGO DI TENGAH */}
+        <div className="bg-gradient-to-b from-blue-50 to-white py-16 sm:py-24 relative overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            
+            {/* LOGO RT BESAR DI TENGAH */}
+            <div className="flex justify-center mb-8 animate-fade-in-up">
+              <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-white shadow-2xl p-2 border-4 border-white ring-4 ring-blue-50">
+                {/* GANTI NAMA FILE DI BAWAH INI JIKA ADA LOGO BULAT KHUSUS */}
+                <img 
+                  src="/logo_garuda.jpeg" 
+                  alt="Logo Besar RT 16" 
+                  className="w-full h-full object-contain rounded-full"
+                />
+              </div>
+            </div>
+
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-4">
-              Selamat Datang di <span className="text-blue-600">Portal RT.16</span>
+              Selamat Datang di <span className="text-blue-600">Keluarga Lrg Maeng</span>
             </h1>
             <p className="mt-4 max-w-2xl text-lg sm:text-xl text-gray-500 mx-auto mb-8">
-              Sistem Informasi Terpadu RT.16 Kelurahan Talangputri. Akses layanan persuratan dan sampaikan usulan lingkungan Anda secara digital dengan cepat dan transparan.
+              Sistem Informasi Terpadu keluarga RT.16 Kelurahan Talangputri. Akses layanan persuratan dan sampaikan usulan lingkungan Anda secara digital dengan cepat dan transparan.
             </p>
             <div className="flex justify-center gap-4">
               <Link href="/login" className="bg-blue-600 text-white px-8 py-3.5 rounded-xl font-extrabold text-lg shadow-lg hover:bg-blue-700 hover:shadow-xl transition-all transform hover:-translate-y-0.5">
-                Masuk / Daftar Akun
+                Masuk/Daftar
               </Link>
             </div>
           </div>
@@ -106,7 +117,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Container Swipe Horizontal */}
             {isLoadingUsulan ? (
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {[1, 2, 3].map((n) => (
@@ -165,12 +175,10 @@ export default function Home() {
                                Tanggapan Ketua RT
                              </h4>
                              
-                             {/* Catatan Ketua RT */}
                              <p className="text-xs text-gray-700 italic mb-2 line-clamp-2">
                                {usulan.catatan_rt ? `"${usulan.catatan_rt}"` : "Status usulan telah diperbarui."}
                              </p>
 
-                             {/* Foto Bukti RT (Jika Ada) */}
                              {usulan.foto_tindak_lanjut && (
                                <div className="flex items-center gap-3 bg-white p-1.5 rounded-lg border border-green-100 shadow-sm">
                                  <img 
@@ -215,10 +223,8 @@ export default function Home() {
             <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">Struktur Pengurus RT.16</h2>
             <p className="text-gray-500 mb-12">Siap melayani dan membangun lingkungan bersama warga.</p>
 
-            {/* Tree Container */}
             <div className="flex flex-col items-center">
               
-              {/* LEVEL 1: KETUA */}
               <div className="relative flex flex-col items-center z-10">
                 <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center border-4 border-white shadow-xl mb-3">
                   <span className="text-3xl text-white font-extrabold">G</span>
@@ -227,7 +233,6 @@ export default function Home() {
                 <p className="text-sm font-extrabold text-blue-600 tracking-widest uppercase">Ketua RT</p>
               </div>
 
-              {/* GARIS PENGHUBUNG (Desktop & Mobile) */}
               <div className="relative w-full max-w-[280px] sm:max-w-md h-12">
                 <div className="absolute top-0 left-1/2 w-0.5 h-6 bg-gray-300 -translate-x-1/2"></div>
                 <div className="absolute top-6 left-0 w-full h-0.5 bg-gray-300"></div>
@@ -235,10 +240,8 @@ export default function Home() {
                 <div className="absolute top-6 right-0 w-0.5 h-6 bg-gray-300"></div>
               </div>
 
-              {/* LEVEL 2: SEKRETARIS & BENDAHARA */}
               <div className="flex justify-between w-full max-w-[340px] sm:max-w-[500px] z-10">
                 
-                {/* SEKRETARIS */}
                 <div className="flex flex-col items-center">
                   <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-white shadow-xl mb-3">
                     <span className="text-2xl text-white font-extrabold">S</span>
@@ -247,7 +250,6 @@ export default function Home() {
                   <p className="text-xs font-extrabold text-emerald-600 tracking-widest uppercase">Sekretaris</p>
                 </div>
 
-                {/* BENDAHARA */}
                 <div className="flex flex-col items-center">
                   <div className="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center border-4 border-white shadow-xl mb-3">
                     <span className="text-2xl text-white font-extrabold">M</span>
@@ -268,7 +270,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
             <span className="font-extrabold text-2xl tracking-tight text-white">SIMAK<span className="text-blue-500">RT</span></span>
-            <p className="mt-2 text-gray-400 text-sm">Sistem Informasi Manajemen Kependudukan RT</p>
+            <p className="mt-2 text-gray-400 text-sm">Sistem Informasi Manajemen Kependudukan Resmi</p>
           </div>
           <div className="text-gray-400 text-sm text-center md:text-left">
             <p className="font-bold text-gray-300">RT.16 RW.04 Kelurahan Talangputri</p>
