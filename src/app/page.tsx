@@ -270,7 +270,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
             <span className="font-extrabold text-2xl tracking-tight text-white">SIMAK<span className="text-blue-500">RT</span></span>
-            <p className="mt-2 text-gray-400 text-sm">Sistem Informasi Manajemen Kependudukan Resmi</p>
+            <p className="mt-2 text-gray-400 text-sm">Sistem Informasi Manajemen Kependudukan RT</p>
           </div>
           <div className="text-gray-400 text-sm text-center md:text-left">
             <p className="font-bold text-gray-300">RT.16 RW.04 Kelurahan Talangputri</p>

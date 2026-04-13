@@ -12,8 +12,12 @@ export default function DashboardWarga() {
   // STATE AUTENTIKASI & DATA DIRI
   const [wargaAktif, setWargaAktif] = useState(null);
   const [inputNik, setInputNik] = useState('');
+  const [inputTanggalLahir, setInputTanggalLahir] = useState(''); 
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // STATE MODAL ERROR (Pengganti Alert Rejection)
+  const [errorModal, setErrorModal] = useState({ open: false, message: '', type: 'WARNING' }); // type: 'FATAL' | 'WARNING'
 
   // STATE NAVIGASI & TAB
   const [activeTab, setActiveTab] = useState('surat'); 
@@ -48,21 +52,88 @@ export default function DashboardWarga() {
   // ==========================================
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/');
+    router.push('/'); // Pastikan '/' adalah path landing page Anda
+  };
+
+  const handleErrorModalClose = async () => {
+    if (errorModal.type === 'FATAL') {
+      await handleLogout();
+    } else {
+      setErrorModal({ open: false, message: '', type: 'WARNING' });
+    }
   };
 
   const verifikasiWarga = async (e) => {
     e.preventDefault();
     setIsLoadingAuth(true);
-    const { data, error } = await supabase.from('master_warga').select('*').eq('nik', inputNik).single();
-    
-    if (error || !data) {
-      alert("NIK tidak ditemukan di database RT.16. Pastikan Anda sudah terdaftar.");
-    } else {
-      setWargaAktif(data);
-      fetchDataWarga(data.nik);
+
+    try {
+      // 1. Dapatkan sesi user yang sedang login (hanya bawa email & ID auth)
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        setErrorModal({ open: true, message: "Sesi Anda tidak valid atau telah habis. Silakan login kembali.", type: 'FATAL' });
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      // 2. MENCARI NIK DARI TABEL PROFILES BERDASARKAN ID AKUN LOGIN
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('nik')
+        .eq('id', user.id) // Cocokkan dengan ID user auth
+        .single();
+
+      if (profileError || !profileData || !profileData.nik) {
+        setErrorModal({ 
+          open: true, 
+          message: `INFO SISTEM: Akun Anda tidak memiliki data NIK di tabel profiles. Harap hubungi Admin.`, 
+          type: 'FATAL' 
+        });
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      // 3. PEMBERSIHAN FORMAT INPUT & DATABASE
+      const nikInputBersih = String(inputNik).trim();
+      const nikLoginBersih = String(profileData.nik).trim();
+
+      // 4. PENCOCOKAN KETAT (Mencegah pakai NIK warga lain)
+      if (nikInputBersih !== nikLoginBersih) {
+        setErrorModal({ 
+          open: true, 
+          message: `AKSES DITOLAK: Anda terdeteksi mencoba menggunakan NIK warga lain. (Akun ini terikat dengan NIK: ${nikLoginBersih}).`, 
+          type: 'FATAL' 
+        });
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      // 5. Verifikasi di Database master_warga untuk mengecek TANGGAL LAHIR
+      const { data: wargaData, error: wargaError } = await supabase
+        .from('master_warga')
+        .select('*')
+        .eq('nik', nikInputBersih)
+        .single(); 
+      
+      const tglLahirDB = wargaData?.tgl_lahir ? String(wargaData.tgl_lahir).split('T')[0] : null;
+
+      // 6. Logika Penolakan Akhir
+      if (wargaError || !wargaData) {
+        setErrorModal({ open: true, message: "NIK tidak ditemukan dalam database warga RT kami.", type: 'FATAL' });
+      } else if (tglLahirDB !== String(inputTanggalLahir).trim()) {
+        setErrorModal({ open: true, message: "Masukkan tanggal lahir yang benar, ulangi login.", type: 'WARNING' });
+      } else {
+        // Semua Cocok! Lolos Verifikasi
+        setWargaAktif(wargaData);
+        fetchDataWarga(wargaData.nik);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorModal({ open: true, message: "Terjadi kesalahan sistem saat memverifikasi data.", type: 'FATAL' });
+    } finally {
+      setIsLoadingAuth(false);
     }
-    setIsLoadingAuth(false);
   };
 
   const fetchDataWarga = async (nik) => {
@@ -153,18 +224,16 @@ export default function DashboardWarga() {
 
     const uploadedUrls = [];
     
-    // Proses Upload dengan Pengecekan Error Ketat
     for (const file of fotos) {
       const compressed = await compressImage(file);
       const fileName = `usulan_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
       
       const { data, error: uploadError } = await supabase.storage.from('usulan').upload(fileName, compressed);
 
-      // JIKA UPLOAD GAGAL (BIASANYA KARENA POLICY / RLS)
       if (uploadError) {
-        alert(`GAGAL UPLOAD FOTO!\nPesan Error Supabase: ${uploadError.message}\n\nPastikan Anda sudah menambahkan Storage Policy (INSERT) untuk bucket 'usulan'.`);
+        alert(`GAGAL UPLOAD FOTO!\nPesan Error Supabase: ${uploadError.message}`);
         setIsProcessing(false);
-        return; // Hentikan proses simpan
+        return; 
       }
 
       if (data) {
@@ -173,7 +242,6 @@ export default function DashboardWarga() {
       }
     }
 
-    // Jika upload foto berhasil semua, simpan data ke tabel
     const { error } = await supabase.from('usulan_warga').insert([{
       nik_pengusul: wargaAktif.nik,
       nama_pengusul: wargaAktif.nama,
@@ -234,7 +302,6 @@ export default function DashboardWarga() {
     } else alert("Gagal update: " + error.message);
   };
 
-  // Fallback Parser Foto 
   const parseFotoUsulan = (fotoData) => {
     if (!fotoData) return [];
     if (Array.isArray(fotoData)) return fotoData;
@@ -251,20 +318,52 @@ export default function DashboardWarga() {
   // ==========================================
   if (!wargaAktif) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border-t-4 border-blue-600">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Verifikasi Warga</h2>
-            <p className="text-sm text-gray-500 mt-2">Masukkan NIK Anda untuk mengakses dasbor layanan mandiri.</p>
+            <p className="text-sm text-gray-500 mt-2">Pastikan NIK dan Tanggal Lahir sesuai dengan Kartu Keluarga.</p>
           </div>
-          <form onSubmit={verifikasiWarga}>
-            <input type="text" required value={inputNik} onChange={(e) => setInputNik(e.target.value)} placeholder="Masukkan 16 Digit NIK..." className="w-full border p-3 rounded-lg mb-4 text-center text-lg tracking-widest focus:ring-2 focus:ring-blue-500 outline-none" />
-            <button type="submit" disabled={isLoadingAuth} className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">
+          <form onSubmit={verifikasiWarga} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1 text-left">Nomor Induk Kependudukan (NIK)</label>
+              <input type="text" required value={inputNik} onChange={(e) => setInputNik(e.target.value)} placeholder="Masukkan 16 Digit NIK..." className="w-full border p-3 rounded-lg text-center text-lg tracking-widest focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1 text-left">Tanggal Lahir</label>
+              <input type="date" required value={inputTanggalLahir} onChange={(e) => setInputTanggalLahir(e.target.value)} className="w-full border p-3 rounded-lg text-center text-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+            <button type="submit" disabled={isLoadingAuth} className="w-full bg-blue-600 text-white font-bold py-3 mt-4 rounded-lg hover:bg-blue-700 transition-colors">
               {isLoadingAuth ? 'Mencocokkan Data...' : 'Akses Dasbor Warga'}
             </button>
           </form>
           <button onClick={handleLogout} className="w-full mt-4 text-red-500 font-medium text-sm hover:underline">Kembali ke Halaman Utama</button>
         </div>
+
+        {/* MODAL ERROR VERIFIKASI (Pengganti Alert) */}
+        {errorModal.open && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all scale-100">
+              <div className={`p-6 text-white flex flex-col justify-center items-center ${errorModal.type === 'FATAL' ? 'bg-red-500' : 'bg-yellow-500'}`}>
+                {errorModal.type === 'FATAL' ? (
+                  <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                ) : (
+                  <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                )}
+                <h3 className="text-xl font-bold">{errorModal.type === 'FATAL' ? 'Akses Ditolak!' : 'Verifikasi Gagal'}</h3>
+              </div>
+              <div className="p-6 text-center">
+                <p className="text-gray-700 text-base mb-8">{errorModal.message}</p>
+                <button
+                  onClick={handleErrorModalClose}
+                  className={`w-full py-3 rounded-xl font-bold text-white shadow-md transition-colors ${errorModal.type === 'FATAL' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-500 hover:bg-yellow-600'}`}
+                >
+                  {errorModal.type === 'FATAL' ? 'Keluar' : 'Coba Lagi'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -376,7 +475,6 @@ export default function DashboardWarga() {
       {activeTab === 'usulan' && !cetakSurat && (
         <div className="max-w-5xl mx-auto space-y-6 print:hidden">
           
-          {/* Form Buat Usulan */}
           <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md border">
             <h2 className="text-lg font-bold text-gray-800 border-b pb-3 mb-4">Sampaikan Usulan / Aspirasi Warga</h2>
             <form onSubmit={submitUsulan} className="space-y-6">
@@ -439,7 +537,6 @@ export default function DashboardWarga() {
             </form>
           </div>
 
-          {/* Riwayat Usulan */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
             <div className="bg-gray-800 p-4"><h3 className="font-bold text-white">Riwayat Usulan & Pantauan Saya</h3></div>
             <div className="p-4 space-y-4">
@@ -497,7 +594,6 @@ export default function DashboardWarga() {
                                 className="w-16 h-16 object-cover rounded-md shadow-sm border border-gray-300" 
                                 alt={`Usulan ${idx+1}`} 
                              />
-                             {/* Tambahan Link URL agar bisa diklik manual jika gambar rusak */}
                              <a href={foto} target="_blank" rel="noreferrer" className="text-[8px] text-blue-500 mt-1 underline max-w-[64px] truncate" title={foto}>Buka Link</a>
                           </div>
                         )) : <span className="text-xs text-gray-400">Tidak ada foto</span>}

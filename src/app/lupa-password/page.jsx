@@ -24,16 +24,22 @@ export default function LupaPassword() {
     setIsLoading(false);
 
     if (error) {
-      setErrorMsg(error.message);
+      // Tangkap error lain (seperti terlalu sering mencoba)
+      if (error.message.includes("rate limit")) {
+        setErrorMsg("Anda meminta terlalu cepat. Tunggu 1 menit sebelum mencoba lagi.");
+      } else {
+        setErrorMsg("Terjadi kesalahan: " + error.message);
+      }
     } else {
-      setMessage('Tautan untuk mereset password telah dikirim. Silakan cek kotak masuk (Inbox) atau folder Spam di email Anda.');
+      // Pesan diubah menjadi standar keamanan tinggi
+      setMessage('Jika email Anda terdaftar di sistem kami, tautan untuk mereset password telah dikirim. Silakan cek kotak masuk atau folder Spam Anda.');
       setEmail(''); // Kosongkan form
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md border-t-4 border-blue-600">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">Lupa Password</h2>
         <p className="text-sm text-gray-600 text-center mb-6">
           Masukkan alamat email yang Anda gunakan saat mendaftar. Kami akan mengirimkan tautan untuk membuat password baru.
@@ -48,23 +54,36 @@ export default function LupaPassword() {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
-              className="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             />
           </div>
 
-          {errorMsg && <p className="text-red-500 text-sm text-center">{errorMsg}</p>}
-          {message && <p className="text-green-600 text-sm text-center bg-green-50 p-2 rounded border border-green-200">{message}</p>}
+          {/* Alert Pesan Error */}
+          {errorMsg && (
+            <div className="bg-red-50 p-3 rounded border border-red-200">
+              <p className="text-red-600 text-sm text-center font-medium">{errorMsg}</p>
+            </div>
+          )}
+          
+          {/* Alert Pesan Sukses */}
+          {message && (
+            <div className="bg-green-50 p-3 rounded border border-green-200">
+              <p className="text-green-700 text-sm text-center font-medium">{message}</p>
+            </div>
+          )}
 
           <button 
             type="submit" 
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+            className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors shadow-sm"
           >
-            {isLoading ? 'Mengirim...' : 'Kirim Link Reset'}
+            {isLoading ? 'Mengecek...' : 'Kirim Link Reset'}
           </button>
 
           <div className="text-center mt-4">
-            <a href="/login" className="text-sm text-blue-600 hover:underline">Kembali ke halaman Login</a>
+            <a href="/login" className="text-sm text-blue-600 hover:underline font-medium">
+              &larr; Kembali ke halaman Login
+            </a>
           </div>
         </form>
       </div>

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 // Metadata Proyek
 export const metadata: Metadata = {
-  title: "SIMAKRT - Portal RT 16",
+  title: "Gang Maeng",
   description: "Sistem Informasi Manajemen Kependudukan RT.16 Kelurahan Talangputri",
 };
 

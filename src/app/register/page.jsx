@@ -15,26 +15,27 @@ export default function Register() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  // TAMBAHAN STATE UNTUK MODAL:
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Tahap 1: Cek NIK
+  // ==========================================
+  // TAHAP 1: CEK NIK & AMBIL DATA DIRI WARGA
+  // ==========================================
   const handleCheckNIK = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    // Cek di tabel referensi RT
+    // Cek di tabel referensi RT sekaligus mengambil nama & tanggal lahir
     const { data: masterData, error } = await supabase
       .from('master_warga')
-      .select('is_registered')
-      .eq('nik', nik)
+      .select('is_registered, nama, tgl_lahir')
+      .eq('nik', String(nik).trim())
       .single();
 
     setIsLoading(false);
 
     if (error || !masterData) {
-      setErrorMsg("NIK tidak ditemukan. Anda bukan warga RT ini.");
+      setErrorMsg("NIK tidak ditemukan. Anda bukan warga RT kami.");
       return;
     }
 
@@ -43,187 +44,246 @@ export default function Register() {
       return;
     }
 
-    if (error) {
-       alert("Error dari Supabase: " + error.message);
-    }
-
-    // Lolos pengecekan, lanjut ke form pengisian data
+    // Jika NIK valid dan belum daftar, isi form otomatis dan lanjut ke Tahap 2
+    setFormData({
+      ...formData,
+      nama: masterData.nama || '',
+      tanggal_lahir: masterData.tgl_lahir ? String(masterData.tgl_lahir).split('T')[0] : ''
+    });
     setStep(2);
   };
 
-  // Tahap 2: Submit Pendaftaran
+  // ==========================================
+  // TAHAP 2: PROSES PENDAFTARAN AKUN
+  // ==========================================
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
-    // 1. Daftarkan ke Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-    });
+    try {
+      // 1. Buat User di Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
 
-    if (authError) {
-      setErrorMsg(authError.message);
-      setIsLoading(false);
-      return;
-    }
+      if (authError) throw authError;
 
-    // 2. Simpan data detail ke tabel profiles
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert([
-        {
+      // 2. Simpan Kelengkapan Data ke tabel profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
           id: authData.user.id,
-          nik: nik,
+          nik: String(nik).trim(),
           nama: formData.nama,
           tanggal_lahir: formData.tanggal_lahir,
           no_hp: formData.no_hp,
-          email: formData.email
-        }
-      ]);
+          email: formData.email,
+          role: 'warga'
+        }]);
 
-    if (profileError) {
-      setErrorMsg("Gagal menyimpan profil: " + profileError.message);
+      if (profileError) throw profileError;
+
+      // 3. Update status is_registered di master_warga
+      const { error: updateError } = await supabase
+        .from('master_warga')
+        .update({ is_registered: true })
+        .eq('nik', String(nik).trim());
+
+      if (updateError) throw updateError;
+
+      // Berhasil
+      setShowSuccessModal(true);
+
+    } catch (error) {
+      setErrorMsg(error.message || "Terjadi kesalahan saat pendaftaran.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    // 3. Update status master_warga
-    await supabase.from('master_warga').update({ is_registered: true }).eq('nik', nik);
-
-    setIsLoading(false);
-    
-    // TAMPILKAN MODAL BUKAN ALERT
-    setShowSuccessModal(true);
-    setTimeout(() => {
-      router.push('/login');
-    }, 2500); // Jeda 2.5 detik lalu ke halaman login
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4 relative">
-      
-      {/* MODAL SUKSES DAFTAR */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center transform transition-all scale-100 opacity-100">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">Pendaftaran Berhasil!</h3>
-            <p className="text-gray-600 mb-4">Akun warga Anda telah berhasil dibuat.</p>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>Mengarahkan ke halaman login...</span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative">
+      <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border-t-4 border-green-600">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Registrasi Warga</h2>
+          <p className="text-sm text-gray-500 mt-2">Daftarkan akun untuk akses layanan mandiri RT.16</p>
         </div>
-      )}
-      
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        {step === 1 ? (
+
+        {/* ========================================== */}
+        {/* TAMPILAN TAHAP 1: INPUT NIK */}
+        {/* ========================================== */}
+        {step === 1 && (
           <form onSubmit={handleCheckNIK} className="space-y-4">
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Daftar Akun Warga RT</h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Nomor Induk Kependudukan (NIK)</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1 text-left">Langkah 1: Cek NIK Anda</label>
               <input 
                 type="text" 
-                placeholder="Masukkan 16 digit NIK" 
-                value={nik} 
+                placeholder="Masukkan 16 Digit NIK" 
+                value={nik}
                 onChange={(e) => setNik(e.target.value)} 
                 required 
-                className="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 text-center text-lg tracking-widest outline-none"
               />
             </div>
-            {errorMsg && <p className="text-red-500 text-sm">{errorMsg}</p>}
+            {errorMsg && <p className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded">{errorMsg}</p>}
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+              className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-md"
             >
-              {isLoading ? 'Mengecek...' : 'Cek NIK'}
-            </button>
-            <p className="text-center text-sm mt-4">
-              Sudah punya akun? <a href="/login" className="text-blue-600 hover:underline">Login di sini</a>
-            </p>
-          </form>
-        ) : (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Lengkapi Data Diri</h2>
-            
-            <input 
-              type="text" 
-              value={nik} 
-              disabled 
-              className="w-full px-4 py-2 border rounded-md bg-gray-100 cursor-not-allowed" 
-            />
-            
-            <input 
-              type="text" 
-              placeholder="Nama Lengkap" 
-              onChange={(e) => setFormData({...formData, nama: e.target.value})} 
-              required 
-              className="w-full px-4 py-2 border rounded-md focus:ring-blue-500"
-            />
-            
-            <input 
-              type="date" 
-              onChange={(e) => setFormData({...formData, tanggal_lahir: e.target.value})} 
-              required 
-              className="w-full px-4 py-2 border rounded-md focus:ring-blue-500"
-            />
-            
-            <input 
-              type="tel" 
-              placeholder="No Handphone Aktif" 
-              onChange={(e) => setFormData({...formData, no_hp: e.target.value})} 
-              required 
-              className="w-full px-4 py-2 border rounded-md focus:ring-blue-500"
-            />
-            
-            <input 
-              type="email" 
-              placeholder="Alamat Email Aktif" 
-              onChange={(e) => setFormData({...formData, email: e.target.value})} 
-              required 
-              className="w-full px-4 py-2 border rounded-md focus:ring-blue-500"
-            />
-            
-            <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Buat Password" 
-                onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                required 
-                className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 pr-16" 
-              />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-2 text-sm text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? "Tutup" : "Intip"}
-              </button>
-            </div>
-
-            {errorMsg && <p className="text-red-500 text-sm">{errorMsg}</p>}
-            
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 disabled:bg-green-300"
-            >
-              {isLoading ? 'Mendaftarkan...' : 'Daftar Sekarang'}
+              {isLoading ? 'Mengecek Database...' : 'Cek NIK Saya'}
             </button>
           </form>
         )}
+
+        {/* ========================================== */}
+        {/* TAMPILAN TAHAP 2: LENGKAPI DATA */}
+        {/* ========================================== */}
+        {step === 2 && (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="bg-green-50 border border-green-200 p-3 rounded-lg mb-4">
+              <p className="text-xs text-green-800 font-medium">✅ NIK Anda terdaftar. Silakan lengkapi formulir di bawah ini untuk melanjutkan.</p>
+            </div>
+
+            {/* FIELD TERKUNCI (READ-ONLY) */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">NIK</label>
+              <input 
+                type="text" 
+                value={nik} 
+                disabled 
+                className="w-full px-4 py-2 border rounded-md bg-gray-100 text-gray-500 font-medium cursor-not-allowed"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Sesuai KK</label>
+              <input 
+                type="text" 
+                value={formData.nama} 
+                disabled 
+                className="w-full px-4 py-2 border rounded-md bg-gray-100 text-gray-500 font-medium cursor-not-allowed uppercase"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Lahir</label>
+              <input 
+                type="date" 
+                value={formData.tanggal_lahir} 
+                disabled 
+                className="w-full px-4 py-2 border rounded-md bg-gray-100 text-gray-500 font-medium cursor-not-allowed"
+              />
+            </div>
+            
+            {/* FIELD YANG BISA DIISI */}
+            <div className="pt-2 border-t">
+              <label className="block text-xs font-bold text-gray-700 mb-1">Nomor WhatsApp / HP <span className="text-red-500">*</span></label>
+              <input 
+                type="text" 
+                placeholder="Contoh: 08123456789" 
+                value={formData.no_hp}
+                onChange={(e) => setFormData({...formData, no_hp: e.target.value})} 
+                required 
+                className="w-full px-4 py-2 border rounded-md focus:ring-green-500 outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Alamat Email Aktif <span className="text-red-500">*</span></label>
+              <input 
+                type="email" 
+                placeholder="email@contoh.com" 
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})} 
+                required 
+                className="w-full px-4 py-2 border rounded-md focus:ring-green-500 outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Buat Password <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="Minimal 6 karakter" 
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                  required 
+                  className="w-full px-4 py-2 border rounded-md focus:ring-green-500 outline-none pr-12" 
+                />
+                
+                {/* ICON MATA (EYE ICON) */}
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-gray-400 hover:text-green-600 transition-colors focus:outline-none"
+                  title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                >
+                  {showPassword ? (
+                    // Icon Mata Dicoret (Hide)
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
+                  ) : (
+                    // Icon Mata Terbuka (Show)
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {errorMsg && <p className="text-red-500 text-sm font-medium bg-red-50 p-2 rounded">{errorMsg}</p>}
+            
+            <div className="flex gap-3 pt-4">
+              <button 
+                type="button" 
+                onClick={() => { setStep(1); setFormData({nama: '', tanggal_lahir: '', no_hp: '', email: '', password: ''}); }}
+                className="w-1/3 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Kembali
+              </button>
+              <button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-2/3 bg-green-600 text-white font-bold py-2.5 rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors shadow-md"
+              >
+                {isLoading ? 'Memproses...' : 'Buat Akun'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <button onClick={() => router.push('/')} className="w-full mt-6 text-green-600 font-medium text-sm hover:underline">
+          Sudah punya akun? Kembali ke Halaman Login
+        </button>
       </div>
+
+      {/* MODAL SUKSES */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center transform scale-100 transition-all">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+              <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Registrasi Berhasil!</h3>
+            <p className="text-sm text-gray-600 mb-6">Akun Anda telah berhasil dibuat. Silakan login untuk masuk ke dasbor layanan mandiri.</p>
+            <button
+              onClick={() => router.push('/')}
+              className="w-full bg-green-600 text-white font-bold rounded-xl px-4 py-3 hover:bg-green-700 shadow-lg transition-colors"
+            >
+              Menuju Halaman Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
