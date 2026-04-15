@@ -13,6 +13,7 @@ import DataWargaView from '../../../components/DashboardKetua/DataWargaView';
 import PermintaanMasukView from '../../../components/DashboardKetua/PermintaanMasukView';
 import BuatSuratView from '../../../components/DashboardKetua/BuatSuratView';
 import PenunjukanPetugasView from '../../../components/DashboardKetua/PenunjukanPetugasView';
+import LaporanView from '../../../components/DashboardKetua/LaporanView';
 
 export const dynamic = 'force-dynamic';
 
@@ -246,6 +247,13 @@ export default function DashboardKetua() {
           setActiveView={setActiveView} 
           dataWarga={dataWarga} 
           fetchWarga={fetchWarga} 
+        />
+      )}
+
+      {activeView === 'laporan' && (
+        <LaporanView 
+          setActiveView={setActiveView} 
+          dataWarga={dataWarga} 
         />
       )}
 

@@ -1,5 +1,5 @@
 // File: src/components/DashboardKetua/DataWargaView.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) {
@@ -9,14 +9,20 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const [searchQuery, setSearchQuery] = useState('');
   const [tabWarga, setTabWarga] = useState('aktif'); 
   const [ageFilter, setAgeFilter] = useState('all');
+  
+  // State Modals & Form
   const [showModal, setShowModal] = useState({ add: false, edit: false, delete: false, view: false });
   const [formData, setFormData] = useState({});
   const [deleteReason, setDeleteReason] = useState('');
   const [selectedWarga, setSelectedWarga] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // State Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // ==========================================
-  // 2. LOGIKA & STATISTIK WARGA
+  // 2. LOGIKA STATISTIK DEMOGRAFI
   // ==========================================
   const calculateAge = (dob) => {
     if (!dob) return 0;
@@ -47,28 +53,66 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     return { total: aktif.length, kk: unikKK.size, l, p, u0_5, u6_10, u11_17, u18_60, u60plus };
   }, [dataWarga]);
 
-  const filteredWarga = dataWarga.filter(w => {
-    if (!w) return false;
-    const isMatchTab = tabWarga === 'aktif' ? w.status_warga !== 'mantan' : w.status_warga === 'mantan';
-    const query = searchQuery.toLowerCase().trim();
-    const safeNama = w.nama ? String(w.nama).toLowerCase() : ''; 
-    const safeNik = w.nik ? String(w.nik).toLowerCase() : '';
-    const isMatchSearch = safeNama.includes(query) || safeNik.includes(query);
-    
-    let isMatchAge = true;
-    if (ageFilter !== 'all') {
-      const age = calculateAge(w?.tgl_lahir);
-      if (ageFilter === '0_5') isMatchAge = age >= 0 && age <= 5; 
-      else if (ageFilter === '6_10') isMatchAge = age >= 6 && age <= 10; 
-      else if (ageFilter === '11_17') isMatchAge = age >= 11 && age <= 17; 
-      else if (ageFilter === '18_60') isMatchAge = age >= 18 && age <= 60; 
-      else if (ageFilter === '60plus') isMatchAge = age > 60;
-    }
-    return isMatchTab && isMatchSearch && isMatchAge;
-  });
+  // ==========================================
+  // 3. LOGIKA FILTER, PENGURUTAN HIERARKI & PAGINATION
+  // ==========================================
+  const dataTerproses = useMemo(() => {
+    // A. Bobot Urutan Status Keluarga
+    const bobotStatus = {
+      'KEPALA KELUARGA': 1, 'SUAMI': 2, 'ISTRI': 3, 'ANAK': 4,
+      'MENANTU': 5, 'CUCU': 6, 'ORANG TUA': 7, 'MERTUA': 8,
+      'FAMILI LAIN': 9, 'PEMBANTU': 10
+    };
+    const getBobot = (status) => bobotStatus[status?.toUpperCase()] || 99;
+
+    // B. Filter Data
+    let filtered = dataWarga.filter(w => {
+      if (!w) return false;
+      const isMatchTab = tabWarga === 'aktif' ? w.status_warga !== 'mantan' : w.status_warga === 'mantan';
+      
+      const query = searchQuery.toLowerCase().trim();
+      const safeNama = w.nama ? String(w.nama).toLowerCase() : ''; 
+      const safeNik = w.nik ? String(w.nik).toLowerCase() : '';
+      const safeKk = w.no_kk ? String(w.no_kk).toLowerCase() : '';
+      const isMatchSearch = safeNama.includes(query) || safeNik.includes(query) || safeKk.includes(query);
+      
+      let isMatchAge = true;
+      if (ageFilter !== 'all') {
+        const age = calculateAge(w?.tgl_lahir);
+        if (ageFilter === '0_5') isMatchAge = age >= 0 && age <= 5; 
+        else if (ageFilter === '6_10') isMatchAge = age >= 6 && age <= 10; 
+        else if (ageFilter === '11_17') isMatchAge = age >= 11 && age <= 17; 
+        else if (ageFilter === '18_60') isMatchAge = age >= 18 && age <= 60; 
+        else if (ageFilter === '60plus') isMatchAge = age > 60;
+      }
+      return isMatchTab && isMatchSearch && isMatchAge;
+    });
+
+    // C. Pengurutan (Sorting) No KK dan Hierarki
+    filtered.sort((a, b) => {
+      // FIX: Paksa tipe datanya menjadi String agar tidak crash saat diurutkan
+      const kkA = a.no_kk ? String(a.no_kk) : '';
+      const kkB = b.no_kk ? String(b.no_kk) : '';
+      
+      if (kkA !== kkB) return kkA.localeCompare(kkB);
+      return getBobot(a.status_kk) - getBobot(b.status_kk);
+    });
+
+    return filtered;
+  }, [dataWarga, tabWarga, searchQuery, ageFilter]);
+
+  // Kalkulasi Pagination
+  const totalPages = Math.ceil(dataTerproses.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const dataHalamanIni = dataTerproses.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset ke halaman 1 jika filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, itemsPerPage, tabWarga, ageFilter]);
 
   // ==========================================
-  // 3. FUNGSI CRUD WARGA
+  // 4. FUNGSI CRUD WARGA
   // ==========================================
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -102,37 +146,34 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   // KOMPONEN FORM INPUT
   const FormInputs = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1 text-sm">
-      <div><label className="font-semibold">No. KK</label><input required name="no_kk" value={formData?.no_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div><label className="font-semibold">NIK</label><input required name="nik" value={formData?.nik || ''} onChange={handleInputChange} disabled={showModal.edit} className="w-full border p-2 rounded bg-gray-50" /></div>
-      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Nama Lengkap</label><input required name="nama" value={formData?.nama || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
+      <div><label className="font-semibold">No. KK</label><input required name="no_kk" value={formData?.no_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div><label className="font-semibold">NIK</label><input required name="nik" value={formData?.nik || ''} onChange={handleInputChange} disabled={showModal.edit} className="w-full border p-2 rounded bg-gray-50 focus:ring-blue-500" /></div>
+      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Nama Lengkap</label><input required name="nama" value={formData?.nama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
       <div><label className="font-semibold">Jenis Kelamin</label>
-        <select required name="jenis_kelamin" value={formData?.jenis_kelamin || ''} onChange={handleInputChange} className="w-full border p-2 rounded">
+        <select required name="jenis_kelamin" value={formData?.jenis_kelamin || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500">
           <option value="">Pilih...</option><option value="LAKI-LAKI">Laki-laki</option><option value="PEREMPUAN">Perempuan</option>
         </select>
       </div>
-      <div><label className="font-semibold">Agama</label><input required name="agama" value={formData?.agama || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div><label className="font-semibold">Tempat Lahir</label><input required name="tempat_lahir" value={formData?.tempat_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div><label className="font-semibold">Tanggal Lahir</label><input required type="date" name="tgl_lahir" value={formData?.tgl_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div><label className="font-semibold">Status KK</label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div><label className="font-semibold">Pendidikan</label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border p-2 rounded" /></div>
-      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Alamat Lengkap</label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border p-2 rounded" rows="2"></textarea></div>
+      <div><label className="font-semibold">Agama</label><input required name="agama" value={formData?.agama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div><label className="font-semibold">Tempat Lahir</label><input required name="tempat_lahir" value={formData?.tempat_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div><label className="font-semibold">Tanggal Lahir</label><input required type="date" name="tgl_lahir" value={formData?.tgl_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div><label className="font-semibold">Status KK</label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div><label className="font-semibold">Pendidikan</label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Alamat Lengkap</label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" rows="2"></textarea></div>
     </div>
   );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 print:hidden">
-      {/* HEADER TULISAN */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <button onClick={() => setActiveView('menu')} className="text-sm text-blue-600 font-bold hover:underline bg-blue-50 px-4 py-2 rounded-lg">&larr; Kembali ke Menu Utama</button>
-        <button onClick={() => { setFormData({}); setShowModal({...showModal, add: true}); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 w-full sm:w-auto">+ Tambah Warga</button>
+        <button onClick={() => { setFormData({}); setShowModal({...showModal, add: true}); }} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 w-full sm:w-auto transition">+ Tambah Data Warga</button>
       </div>
 
-      {/* ========================================== */}
-      {/* STATISTIK KARTU UTAMA & UMUR                 */}
-      {/* ========================================== */}
+      {/* STATISTIK KARTU */}
       <div className="space-y-4">
-        {/* Kartu Demografi Umum */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><p className="text-xs text-gray-500 font-bold uppercase">Total Warga Aktif</p><h3 className="text-3xl font-black text-blue-700">{stats.total}</h3></div>
           <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><p className="text-xs text-gray-500 font-bold uppercase">Kepala Keluarga</p><h3 className="text-3xl font-black text-indigo-700">{stats.kk}</h3></div>
@@ -140,107 +181,155 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
           <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100"><p className="text-xs text-gray-500 font-bold uppercase">Perempuan</p><h3 className="text-3xl font-black text-pink-600">{stats.p}</h3></div>
         </div>
 
-        {/* Kartu Kategori Umur (Bisa Diklik & Berubah Warna Saat Aktif) */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div 
-            onClick={() => setAgeFilter(ageFilter === '0_5' ? 'all' : '0_5')}
-            className={`p-3 rounded-xl shadow-sm border-l-4 border-l-orange-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '0_5' ? 'bg-orange-50 ring-2 ring-orange-400' : 'bg-white hover:bg-orange-50'}`}
-          >
-            <p className="text-[10px] text-gray-500 font-bold uppercase">Balita (0-5 th)</p>
-            <h3 className="text-xl font-black text-orange-600">{stats.u0_5}</h3>
+          <div onClick={() => setAgeFilter(ageFilter === '0_5' ? 'all' : '0_5')} className={`p-3 rounded-xl shadow-sm border-l-4 border-l-orange-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '0_5' ? 'bg-orange-50 ring-2 ring-orange-400' : 'bg-white hover:bg-orange-50'}`}>
+            <p className="text-[10px] text-gray-500 font-bold uppercase">Balita (0-5 th)</p><h3 className="text-xl font-black text-orange-600">{stats.u0_5}</h3>
           </div>
-          <div 
-            onClick={() => setAgeFilter(ageFilter === '6_10' ? 'all' : '6_10')}
-            className={`p-3 rounded-xl shadow-sm border-l-4 border-l-yellow-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '6_10' ? 'bg-yellow-50 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-50'}`}
-          >
-            <p className="text-[10px] text-gray-500 font-bold uppercase">Anak (6-10 th)</p>
-            <h3 className="text-xl font-black text-yellow-600">{stats.u6_10}</h3>
+          <div onClick={() => setAgeFilter(ageFilter === '6_10' ? 'all' : '6_10')} className={`p-3 rounded-xl shadow-sm border-l-4 border-l-yellow-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '6_10' ? 'bg-yellow-50 ring-2 ring-yellow-400' : 'bg-white hover:bg-yellow-50'}`}>
+            <p className="text-[10px] text-gray-500 font-bold uppercase">Anak (6-10 th)</p><h3 className="text-xl font-black text-yellow-600">{stats.u6_10}</h3>
           </div>
-          <div 
-            onClick={() => setAgeFilter(ageFilter === '11_17' ? 'all' : '11_17')}
-            className={`p-3 rounded-xl shadow-sm border-l-4 border-l-green-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '11_17' ? 'bg-green-50 ring-2 ring-green-400' : 'bg-white hover:bg-green-50'}`}
-          >
-            <p className="text-[10px] text-gray-500 font-bold uppercase">Remaja (11-17 th)</p>
-            <h3 className="text-xl font-black text-green-600">{stats.u11_17}</h3>
+          <div onClick={() => setAgeFilter(ageFilter === '11_17' ? 'all' : '11_17')} className={`p-3 rounded-xl shadow-sm border-l-4 border-l-green-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '11_17' ? 'bg-green-50 ring-2 ring-green-400' : 'bg-white hover:bg-green-50'}`}>
+            <p className="text-[10px] text-gray-500 font-bold uppercase">Remaja (11-17 th)</p><h3 className="text-xl font-black text-green-600">{stats.u11_17}</h3>
           </div>
-          <div 
-            onClick={() => setAgeFilter(ageFilter === '18_60' ? 'all' : '18_60')}
-            className={`p-3 rounded-xl shadow-sm border-l-4 border-l-blue-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '18_60' ? 'bg-blue-50 ring-2 ring-blue-400' : 'bg-white hover:bg-blue-50'}`}
-          >
-            <p className="text-[10px] text-gray-500 font-bold uppercase">Dewasa (18-60 th)</p>
-            <h3 className="text-xl font-black text-blue-600">{stats.u18_60}</h3>
+          <div onClick={() => setAgeFilter(ageFilter === '18_60' ? 'all' : '18_60')} className={`p-3 rounded-xl shadow-sm border-l-4 border-l-blue-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '18_60' ? 'bg-blue-50 ring-2 ring-blue-400' : 'bg-white hover:bg-blue-50'}`}>
+            <p className="text-[10px] text-gray-500 font-bold uppercase">Dewasa (18-60 th)</p><h3 className="text-xl font-black text-blue-600">{stats.u18_60}</h3>
           </div>
-          <div 
-            onClick={() => setAgeFilter(ageFilter === '60plus' ? 'all' : '60plus')}
-            className={`p-3 rounded-xl shadow-sm border-l-4 border-l-purple-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '60plus' ? 'bg-purple-50 ring-2 ring-purple-400' : 'bg-white hover:bg-purple-50'}`}
-          >
-            <p className="text-[10px] text-gray-500 font-bold uppercase">Lansia (&gt;60 th)</p>
-            <h3 className="text-xl font-black text-purple-600">{stats.u60plus}</h3>
+          <div onClick={() => setAgeFilter(ageFilter === '60plus' ? 'all' : '60plus')} className={`p-3 rounded-xl shadow-sm border-l-4 border-l-purple-500 cursor-pointer transition-all hover:-translate-y-1 ${ageFilter === '60plus' ? 'bg-purple-50 ring-2 ring-purple-400' : 'bg-white hover:bg-purple-50'}`}>
+            <p className="text-[10px] text-gray-500 font-bold uppercase">Lansia (&gt;60 th)</p><h3 className="text-xl font-black text-purple-600">{stats.u60plus}</h3>
           </div>
         </div>
       </div>
 
-      {/* KONTROL FILTER & SEARCH */}
+      {/* FILTER, SEARCH & PAGINATION KONTROL */}
       <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-col lg:flex-row gap-4 justify-between items-center">
         <div className="flex gap-2 w-full lg:w-auto">
-          <button onClick={() => setTabWarga('aktif')} className={`px-4 py-2 rounded-lg text-sm font-bold flex-1 lg:flex-none ${tabWarga === 'aktif' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Warga Aktif</button>
-          <button onClick={() => setTabWarga('mantan')} className={`px-4 py-2 rounded-lg text-sm font-bold flex-1 lg:flex-none ${tabWarga === 'mantan' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Mantan Warga</button>
+          <button onClick={() => setTabWarga('aktif')} className={`px-4 py-2 rounded-lg text-sm font-bold flex-1 lg:flex-none ${tabWarga === 'aktif' ? 'bg-blue-600 text-white shadow' : 'bg-gray-100 text-gray-600'}`}>Warga Aktif</button>
+          <button onClick={() => setTabWarga('mantan')} className={`px-4 py-2 rounded-lg text-sm font-bold flex-1 lg:flex-none ${tabWarga === 'mantan' ? 'bg-red-600 text-white shadow' : 'bg-gray-100 text-gray-600'}`}>Mantan Warga</button>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-          {/* Dropdown tetap ada, jika kartu di klik, ini akan otomatis sinkron */}
-          <select value={ageFilter} onChange={(e) => setAgeFilter(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-sm focus:ring-blue-500">
-            <option value="all">Semua Kategori Umur</option><option value="0_5">Balita (0-5 th)</option><option value="6_10">Anak (6-10 th)</option><option value="11_17">Remaja (11-17 th)</option><option value="18_60">Dewasa (18-60 th)</option><option value="60plus">Lansia (&gt;60 th)</option>
-          </select>
-          <input type="text" placeholder="Cari NAMA atau NIK..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-sm w-full sm:w-64 focus:ring-blue-500" />
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto items-center">
+          <input type="text" placeholder="Cari NIK, KK, NAMA..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-sm w-full sm:w-64 focus:ring-blue-500 outline-none" />
+          <div className="flex items-center gap-2 text-sm w-full sm:w-auto">
+            <span className="font-bold text-gray-600 hidden sm:inline">Tampil:</span>
+            <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className="border p-2 rounded-lg bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full sm:w-auto">
+              <option value={10}>10 Baris</option><option value={20}>20 Baris</option><option value={50}>50 Baris</option><option value={100}>100 Baris</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* TABEL WARGA */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      {/* TABEL DATA WARGA */}
+      <div className="bg-white rounded-xl shadow-md border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm min-w-[900px]">
+          <table className="w-full text-left border-collapse whitespace-nowrap text-sm min-w-[900px]">
             <thead>
               <tr className="bg-gray-100 text-gray-700 border-b-2">
-                <th className="p-3">NIK / No. KK</th>
-                <th className="p-3">Nama Lengkap</th>
-                <th className="p-3 text-center">L/P</th>
-                <th className="p-3">Umur</th>
-                <th className="p-3">Pekerjaan</th>
-                <th className="p-3 text-center">Aksi</th>
+                <th className="py-3 px-4 font-bold">NIK / No. KK</th>
+                <th className="py-3 px-4 font-bold">Nama Lengkap</th>
+                <th className="py-3 px-4 font-bold text-center">L/P</th>
+                <th className="py-3 px-4 font-bold">Umur</th>
+                <th className="py-3 px-4 font-bold">Pekerjaan</th>
+                <th className="py-3 px-4 font-bold text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {filteredWarga.map((w, idx) => (
-                <tr key={idx} className="hover:bg-blue-50 transition">
-                  <td className="p-3"><p className="font-bold text-blue-700">{w.nik}</p><p className="text-[10px] text-gray-500">KK: {w.no_kk}</p></td>
-                  <td className="p-3"><p className="font-bold text-gray-800">{w.nama}</p><p className="text-[10px] bg-gray-200 text-gray-600 font-bold inline-block px-1.5 py-0.5 rounded mt-0.5">{w.status_kk}</p></td>
-                  <td className="p-3 font-medium text-center">{w.jenis_kelamin === 'LAKI-LAKI' ? 'L' : 'P'}</td>
-                  <td className="p-3 font-bold text-gray-600">{calculateAge(w.tgl_lahir)} Thn</td>
-                  <td className="p-3 text-xs text-gray-600">{w.pekerjaan || '-'}</td>
-                  <td className="p-3 text-center space-x-1 whitespace-nowrap">
-                    <button onClick={() => openView(w)} className="bg-blue-100 text-blue-600 px-3 py-1 rounded text-xs font-bold hover:bg-blue-200">View</button>
-                    {tabWarga === 'aktif' && (
-                      <>
-                        <button onClick={() => openEdit(w)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded text-xs font-bold hover:bg-yellow-200">Edit</button>
-                        <button onClick={() => openDelete(w)} className="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold hover:bg-red-200">Mutasi</button>
-                      </>
-                    )}
+            <tbody className="divide-y divide-gray-200">
+              {dataHalamanIni.map((warga, index) => {
+                // Garis pembatas tebal antar beda KK
+                const isNewKK = index > 0 && String(warga.no_kk) !== String(dataHalamanIni[index - 1].no_kk);
+
+                return (
+                  <tr key={warga.id || warga.nik} className={`hover:bg-blue-50 transition-colors ${isNewKK ? 'border-t-4 border-t-gray-300' : ''}`}>
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-blue-700">{warga.nik}</div>
+                      <div className="text-[10px] text-gray-500 font-mono mt-0.5">KK: {warga.no_kk}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-gray-800 uppercase">{warga.nama}</div>
+                      <span className="inline-block mt-1 text-[9px] font-bold tracking-wider text-gray-600 bg-gray-200 px-2 py-0.5 rounded uppercase">
+                        {warga.status_kk}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-bold text-gray-700 text-center">
+                      {warga.jenis_kelamin?.toUpperCase().startsWith('L') ? 'L' : 'P'}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-gray-700">
+                      {calculateAge(warga.tgl_lahir)} Thn
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 text-xs uppercase">
+                      {warga.pekerjaan || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button onClick={() => openView(warga)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-bold hover:bg-blue-200 transition-colors shadow-sm">View</button>
+                        {tabWarga === 'aktif' && (
+                          <>
+                            <button onClick={() => openEdit(warga)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded text-xs font-bold hover:bg-yellow-200 transition-colors shadow-sm">Edit</button>
+                            <button onClick={() => openDelete(warga)} className="bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold hover:bg-red-200 transition-colors shadow-sm">Mutasi</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {dataHalamanIni.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-gray-500 italic">
+                    Data warga tidak ditemukan.
                   </td>
                 </tr>
-              ))}
-              {filteredWarga.length === 0 && (
-                <tr><td colSpan="6" className="p-8 text-center text-gray-500">Data warga tidak ditemukan berdasarkan filter.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* KONTROL PAGINATION */}
+        {totalPages > 1 && (
+          <div className="bg-gray-50 p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="text-sm text-gray-600">
+              Menampilkan <span className="font-bold">{startIndex + 1}</span> - <span className="font-bold">{Math.min(startIndex + itemsPerPage, dataTerproses.length)}</span> dari total <span className="font-bold">{dataTerproses.length}</span> warga
+            </span>
+            
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors shadow-sm"
+              >
+                Sebelumnya
+              </button>
+              
+              {/* Dinamis Nomor Halaman */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => page === 1 || page === totalPages || Math.abs(currentPage - page) <= 1)
+                .map((page, index, array) => (
+                  <React.Fragment key={page}>
+                    {index > 0 && array[index - 1] !== page - 1 && <span className="px-2 py-1 text-gray-400">...</span>}
+                    <button
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1.5 rounded border text-sm font-medium transition-colors shadow-sm ${
+                        currentPage === page ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </React.Fragment>
+              ))}
+
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded border bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors shadow-sm"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================== */}
-      {/* SEMUA MODAL BAWAAN WARGA                     */}
+      {/* MODAL VIEW DETAIL WARGA                      */}
       {/* ========================================== */}
-      
-      {/* MODAL VIEW */}
       {showModal.view && selectedWarga && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -310,7 +399,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
             <div className="p-6 overflow-y-auto"><FormInputs /></div> 
             <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
               <button type="button" onClick={() => setShowModal({...showModal, add: false})} className="px-4 py-2 bg-gray-200 rounded font-bold text-sm">Batal</button>
-              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm">{isProcessing ? 'Menyimpan...' : 'Simpan Data'}</button>
+              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-md">{isProcessing ? 'Menyimpan...' : 'Simpan Data'}</button>
             </div> 
           </form> 
         </div> 
@@ -324,7 +413,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
             <div className="p-6 overflow-y-auto"><FormInputs /></div> 
             <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
               <button type="button" onClick={() => setShowModal({...showModal, edit: false})} className="px-4 py-2 bg-gray-200 rounded font-bold text-sm">Batal</button>
-              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-yellow-600 text-white rounded font-bold text-sm">{isProcessing ? 'Memperbarui...' : 'Update Data'}</button>
+              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-yellow-600 text-white rounded font-bold text-sm shadow-md">{isProcessing ? 'Memperbarui...' : 'Update Data'}</button>
             </div>
           </form> 
         </div> 
@@ -341,7 +430,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
             </div> 
             <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
               <button type="button" onClick={() => setShowModal({...showModal, delete: false})} className="px-4 py-2 bg-gray-200 rounded font-bold text-sm">Batal</button>
-              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-red-600 text-white rounded font-bold text-sm">Pindahkan ke Mantan Warga</button>
+              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-red-600 text-white rounded font-bold text-sm shadow-md">Pindahkan ke Mantan Warga</button>
             </div> 
           </form> 
         </div> 

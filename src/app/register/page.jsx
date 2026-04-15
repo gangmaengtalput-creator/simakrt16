@@ -117,7 +117,7 @@ export default function Register() {
         {step === 1 && (
           <form onSubmit={handleCheckNIK} className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1 text-left">Langkah 1: Cek NIK Anda</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1 text-left">Langkah 1: Cek NIK Anda untuk memastikan bahwa anda adalah warga RT 16.</label>
               <input 
                 type="text" 
                 placeholder="Masukkan 16 Digit NIK" 

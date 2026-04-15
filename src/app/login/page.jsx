@@ -168,7 +168,7 @@ export default function Login() {
           </button>
           
           <p className="text-center text-sm text-gray-600 mt-6">
-            Warga baru? <a href="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">Daftar sekarang</a>
+            Warga RT 16, tapi belum punya akun buat login? <a href="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">Daftar sekarang</a>
           </p>
         </form>
       </div>

@@ -38,14 +38,15 @@ export default function DashboardWarga() {
   const [listIuran, setListIuran] = useState([]);
   const [saldoTotal, setSaldoTotal] = useState(0);
   const [isLoadingIuran, setIsLoadingIuran] = useState(false);
-  const [cetakSurat, setCetakSurat] = useState(null); // Menyimpan data surat untuk dicetak
+  const [listBukuKas, setListBukuKas] = useState([]); // <-- STATE BUKU KAS TRANSPARAN BARU
+  const [cetakSurat, setCetakSurat] = useState(null); 
 
   // ==========================================
   // FUNGSI UMUM & AUTENTIKASI
   // ==========================================
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/'); // Pastikan '/' adalah path landing page Anda
+    router.push('/'); 
   };
 
   const handleErrorModalClose = async () => {
@@ -61,7 +62,6 @@ export default function DashboardWarga() {
     setIsLoadingAuth(true);
 
     try {
-      // 1. Dapatkan sesi user yang sedang login (hanya bawa email & ID auth)
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
@@ -70,11 +70,10 @@ export default function DashboardWarga() {
         return;
       }
 
-      // 2. MENCARI NIK DARI TABEL PROFILES BERDASARKAN ID AKUN LOGIN
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('nik')
-        .eq('id', user.id) // Cocokkan dengan ID user auth
+        .eq('id', user.id) 
         .single();
 
       if (profileError || !profileData || !profileData.nik) {
@@ -87,11 +86,9 @@ export default function DashboardWarga() {
         return;
       }
 
-      // 3. PEMBERSIHAN FORMAT INPUT & DATABASE
       const nikInputBersih = String(inputNik).trim();
       const nikLoginBersih = String(profileData.nik).trim();
 
-      // 4. PENCOCOKAN KETAT (Mencegah pakai NIK warga lain)
       if (nikInputBersih !== nikLoginBersih) {
         setErrorModal({ 
           open: true, 
@@ -102,7 +99,6 @@ export default function DashboardWarga() {
         return;
       }
 
-      // 5. Verifikasi di Database master_warga untuk mengecek TANGGAL LAHIR
       const { data: wargaData, error: wargaError } = await supabase
         .from('master_warga')
         .select('*')
@@ -111,17 +107,16 @@ export default function DashboardWarga() {
       
       const tglLahirDB = wargaData?.tgl_lahir ? String(wargaData.tgl_lahir).split('T')[0] : null;
 
-      // 6. Logika Penolakan Akhir
       if (wargaError || !wargaData) {
         setErrorModal({ open: true, message: "NIK tidak ditemukan dalam database warga RT kami.", type: 'FATAL' });
       } else if (tglLahirDB !== String(inputTanggalLahir).trim()) {
         setErrorModal({ open: true, message: "Masukkan tanggal lahir yang benar, ulangi login.", type: 'WARNING' });
       } else {
-        // Semua Cocok! Lolos Verifikasi
+        // Lolos Verifikasi
         setWargaAktif(wargaData);
         fetchDataWarga(wargaData.nik);
-        fetchIuranWarga(wargaData.no_kk); // Tarik Iuran berdasar No. KK
-        fetchTotalSaldoKas();
+        fetchIuranWarga(wargaData.no_kk); 
+        fetchTotalSaldoKas(); // Panggil fungsi saldo yang sudah diperbarui
       }
 
     } catch (err) {
@@ -182,40 +177,58 @@ export default function DashboardWarga() {
     }
   };
 
+  // --- FUNGSI BUKU KAS TRANSPARAN (DIPERBARUI) ---
   const fetchTotalSaldoKas = async () => {
-      try {
-        // 1. Hitung Total Iuran (Pemasukan)
-        const { data: dataIuran, error: errIuran } = await supabase
-          .from('iuran_kas')
-          .select('jumlah, tipe_transaksi');
+    try {
+      const { data: dataIuran } = await supabase.from('iuran_kas').select('*');
+      const { data: dataPengeluaran } = await supabase.from('pengeluaran_kas').select('*');
 
-        let totalPemasukan = 0;
-        if (!errIuran && dataIuran) {
-          totalPemasukan = dataIuran.reduce((acc, curr) => {
-            return String(curr.tipe_transaksi).toLowerCase() === 'pemasukan' 
-              ? acc + Number(curr.jumlah) 
-              : acc - Number(curr.jumlah);
-          }, 0);
-        }
+      let totalPemasukan = 0;
+      let totalPengeluaran = 0;
+      const gabunganKas = []; 
 
-        // 2. Hitung Total Pengeluaran Kas
-        const { data: dataPengeluaran, error: errPengeluaran } = await supabase
-          .from('pengeluaran_kas')
-          .select('nominal');
-
-        let totalPengeluaran = 0;
-        if (!errPengeluaran && dataPengeluaran) {
-          totalPengeluaran = dataPengeluaran.reduce((acc, curr) => acc + Number(curr.nominal), 0);
-        }
-
-        // 3. Kurangi Pemasukan dengan Pengeluaran untuk mendapat Saldo Akhir
-        const saldoAkhir = totalPemasukan - totalPengeluaran;
-        setSaldoTotal(saldoAkhir);
-        
-      } catch (err) {
-        console.error("Gagal menghitung saldo transparan:", err);
+      if (dataIuran) {
+        dataIuran.forEach(item => {
+          const isMasuk = String(item.tipe_transaksi).toLowerCase() === 'pemasukan';
+          if (isMasuk) {
+            totalPemasukan += Number(item.jumlah);
+            if (Number(item.jumlah) > 0) {
+              gabunganKas.push({
+                id: `in_${item.id}`,
+                tanggal: new Date(item.tanggal_bayar),
+                keterangan: `Iuran Warga - ${item.nama_warga} (${item.bulan_iuran} ${item.tahun_iuran})`,
+                tipe: 'Pemasukan',
+                nominal: Number(item.jumlah)
+              });
+            }
+          } else {
+            totalPemasukan -= Number(item.jumlah);
+          }
+        });
       }
-    };
+
+      if (dataPengeluaran) {
+        dataPengeluaran.forEach(item => {
+          totalPengeluaran += Number(item.nominal);
+          gabunganKas.push({
+            id: `out_${item.id}`,
+            tanggal: new Date(item.tanggal),
+            keterangan: item.keterangan || item.nama_pengeluaran || 'Pengeluaran RT',
+            tipe: 'Pengeluaran',
+            nominal: Number(item.nominal)
+          });
+        });
+      }
+
+      // Urutkan data dari yang paling baru
+      gabunganKas.sort((a, b) => b.tanggal - a.tanggal);
+
+      setSaldoTotal(totalPemasukan - totalPengeluaran);
+      setListBukuKas(gabunganKas); 
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // ==========================================
   // TAMPILAN 1: VERIFIKASI NIK
@@ -295,7 +308,7 @@ export default function DashboardWarga() {
       {/* NAVIGASI TAB */}
       {!cetakSurat && (
         <div className="max-w-5xl mx-auto mb-6 print:hidden">
-          <div className="flex bg-gray-200 p-1 rounded-lg">
+          <div className="flex bg-gray-200 p-1 rounded-lg flex-wrap">
             <button onClick={() => setActiveTab('surat')} className={`flex-1 py-3 text-sm font-bold rounded-md transition-all ${activeTab === 'surat' ? 'bg-white text-blue-700 shadow' : 'text-gray-600 hover:bg-gray-300'}`}>
               📄 Permintaan Surat
             </button>
@@ -306,11 +319,10 @@ export default function DashboardWarga() {
               💰 Iuran Kas
             </button>
             {wargaAktif.is_petugas_iuran && (
-            <button onClick={() => setActiveTab('tugas_petugas')} className={`flex-1 min-w-[150px] py-3 text-sm font-bold rounded-md transition-all ${activeTab === 'tugas_petugas' ? 'bg-green-600 text-white shadow' : 'bg-green-100 text-green-800 hover:bg-green-200 ml-1'}`}>
-            🛡️ Tugas Pungut Kas
-            </button>
-      )}
-
+              <button onClick={() => setActiveTab('tugas_petugas')} className={`flex-1 min-w-[150px] py-3 text-sm font-bold rounded-md transition-all ${activeTab === 'tugas_petugas' ? 'bg-green-600 text-white shadow' : 'bg-green-100 text-green-800 hover:bg-green-200 ml-1'}`}>
+                🛡️ Tugas Pungut Kas
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -342,6 +354,7 @@ export default function DashboardWarga() {
           listIuran={listIuran}
           isLoadingIuran={isLoadingIuran}
           wargaAktif={wargaAktif}
+          listBukuKas={listBukuKas} // <-- OPERAN PROP BARU UNTUK BUKU KAS TRANSPARAN
         />
       )}
 
