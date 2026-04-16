@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function BuatSuratView({
-  activeView, // <--- INI YANG TADI TERLEWAT
+  activeView,
   setActiveView,
   dataWarga,
   riwayatSurat,
@@ -157,8 +157,8 @@ export default function BuatSuratView({
   // TAMPILAN UI
   // ==========================================
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="mb-4 print:hidden flex gap-2">
+    <div className="max-w-5xl mx-auto print:font-serif">
+      <div className="mb-4 print:hidden flex gap-2 sticky top-4 z-50">
         <button onClick={() => { 
           if (permintaanAktifId) {
             setActiveView('permintaan_masuk');
@@ -176,7 +176,7 @@ export default function BuatSuratView({
         <>
           {/* Form Generator Surat */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden mb-8 border-2 border-green-500">
-            <div className="bg-green-600 p-4 flex justify-between items-center">
+            <div className="bg-green-600 p-4 flex justify-between items-center break-inside-avoid">
               <h2 className="text-lg sm:text-xl font-bold text-white">Generator Surat Keterangan</h2>
               {permintaanAktifId && <span className="bg-orange-400 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">Mode Memproses Permintaan</span>}
             </div>
@@ -245,7 +245,7 @@ export default function BuatSuratView({
           {/* Tabel Riwayat Arsip Surat */}
           {!permintaanAktifId && (
             <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden">
-              <div className="bg-gray-800 p-4 flex justify-between items-center">
+              <div className="bg-gray-800 p-4 flex justify-between items-center break-inside-avoid">
                 <h2 className="text-lg font-bold text-white">Arsip / Riwayat Surat</h2>
               </div>
               <div className="overflow-x-auto p-4 max-w-full">
@@ -268,7 +268,7 @@ export default function BuatSuratView({
                           <td className="py-2 px-3 text-gray-600">{new Date(surat.created_at).toLocaleDateString('id-ID')}</td>
                           <td className="py-2 px-3 font-bold text-blue-700">{surat.nomor_surat}</td>
                           <td className="py-2 px-3">{namaPemohon}</td>
-                          <td className="py-2 px-3 flex justify-center gap-1">
+                          <td className="py-2 px-3 flex justify-center gap-1 action-buttons">
                             <button onClick={() => aksiLihatSurat(surat)} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold hover:bg-blue-200">Cetak</button>
                             <button onClick={() => aksiEditSurat(surat)} className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold hover:bg-yellow-200">Edit</button>
                             <button onClick={() => aksiHapusSurat(surat)} className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold hover:bg-red-200">Hapus</button>
@@ -287,9 +287,9 @@ export default function BuatSuratView({
         </>
       )}
 
-      {/* PRINT PREVIEW SURAT */}
+      {/* PRINT PREVIEW SURAT FORMAT RESMI KELURAHAN */}
       {cetakSurat && (
-        <div className="print:m-0 print:p-0">
+        <div className="print-container m-0 p-0 shadow-none">
           <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-800 p-4 rounded-lg print:hidden sticky top-4 z-50">
             <p className="text-white font-medium text-sm">Pratinjau Surat Siap Cetak (Kertas A4)</p>
             <div className="flex gap-2 w-full sm:w-auto">
@@ -311,103 +311,158 @@ export default function BuatSuratView({
           </div>
 
           <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0">
-            <div className="bg-white mx-auto shadow-2xl print:shadow-none font-serif text-[12pt] leading-relaxed text-justify text-black" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', padding: '2cm' }}>
-              <div className="text-center mb-8">
-                <h1 className="font-bold text-xl underline tracking-wide uppercase">Surat Keterangan</h1>
-                <p>Nomor : {cetakSurat?.nomorSurat}</p>
-              </div>
-
-              <p className="mb-4">Yang bertanda tangan dibawah ini :</p>
-              <table className="mb-6 ml-4">
-                <tbody>
-                  <tr><td className="w-48 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold">GUNTUR BAYU JANTORO</td></tr>
-                  <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td>Ketua RT.16</td></tr>
-                </tbody>
-              </table>
-
-              <p className="mb-4">Dengan ini menerangkan bahwa :</p>
-              <table className="mb-6 ml-4">
-                <tbody>
-                  <tr><td className="w-48 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold">{cetakSurat?.warga?.nama || '-'}</td></tr>
-                  <tr><td className="align-top">NIK</td><td className="align-top">:</td><td>{cetakSurat?.warga?.nik || '-'}</td></tr>
-                  <tr><td className="align-top">Jenis Kelamin</td><td className="align-top">:</td><td>{cetakSurat?.warga?.jenis_kelamin?.charAt(0) + cetakSurat?.warga?.jenis_kelamin?.slice(1).toLowerCase()}</td></tr>
-                  <tr><td className="align-top">Tempat/Tgl. Lahir</td><td className="align-top">:</td><td>{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
-                  <tr><td className="align-top">Bangsa/Agama</td><td className="align-top">:</td><td>Indonesia / {cetakSurat?.warga?.agama || '-'}</td></tr>
-                  <tr><td className="align-top">Pekerjaan</td><td className="align-top">:</td><td>{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
-                  <tr><td className="align-top">Alamat</td><td className="align-top">:</td><td>{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td></tr>
-                  <tr><td className="align-top">Kartu Keluarga No</td><td className="align-top">:</td><td>{cetakSurat?.warga?.no_kk || '-'}</td></tr>
-                </tbody>
-              </table>
-
-              <p className="mb-4 indent-8">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
-              <p className="mb-4">Surat Keterangan ini diberikan untuk : <strong>{cetakSurat?.tujuan}</strong></p>
-              <p className="mb-12">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+            <div className="bg-white mx-auto shadow-2xl print:shadow-none font-serif text-[12pt] leading-relaxed text-justify text-black" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', padding: '1.5cm 2cm 1.5cm 2cm' }}>
               
-              <div className="w-full mt-8">
-                <div className="flex w-full mb-2">
-                  <div className="w-1/2"></div>
-                  <div className="w-1/2 text-center"><p>Palembang, {cetakSurat?.tanggal}</p></div>
+              {/* --- KOP SURAT --- */}
+              <div className="relative border-b-[3px] border-black pb-3 mb-6 flex justify-center">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2">
+                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
                 </div>
-                <div className="flex w-full">
-                  <div className="w-1/2 text-center"><p>Mengetahui,</p><p>Ketua RW.04</p></div>
-                  <div className="w-1/2 text-center"><p className="invisible">Spacer</p><p>Ketua RT.16</p></div>
-                </div>
-                <div className="h-24 w-full"></div>
-                <div className="flex w-full">
-                  <div className="w-1/2 text-center"><p className="font-bold underline uppercase">Heriyansah</p></div>
-                  <div className="w-1/2 text-center"><p className="font-bold underline uppercase">Guntur Bayu Jantoro</p></div>
+                <div className="w-full text-center">
+                  <h2 className="text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
+                  <h2 className="text-[14pt] font-bold uppercase leading-tight whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                  <h1 className="text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
+                  <p className="text-[12pt] mt-1 leading-normal">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
                 </div>
               </div>
 
-              <div className="mt-16 text-sm">
-                <p className="font-bold">Catatan :</p>
+              {/* --- JUDUL SURAT --- */}
+              <div className="text-center mb-8 break-inside-avoid">
+                <h1 className="font-bold text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
+                <p className="text-[12pt]">Nomor : {cetakSurat?.nomorSurat}</p>
+              </div>
+
+              {/* --- ISI SURAT --- */}
+              <p className="mb-4 text-left">Yang bertanda tangan dibawah ini :</p>
+              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+                <tbody>
+                  <tr><td className="w-48 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
+                  <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td className="align-top">Ketua RT.16</td></tr>
+                </tbody>
+              </table>
+
+              <p className="mb-4 text-left">Dengan ini menerangkan bahwa :</p>
+              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+                <tbody>
+                  <tr><td className="w-48 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">NIK</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.nik || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Jenis Kelamin</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td></tr>
+                  <tr><td className="align-top py-0.5">Tempat/Tgl. Lahir</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Bangsa/Agama</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">Indonesia / {cetakSurat?.warga?.agama || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5 text-capitalize">{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td></tr>
+                  <tr><td className="align-top py-0.5">Kartu Keluarga No</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.no_kk || '-'}</td></tr>
+                </tbody>
+              </table>
+
+              <p className="mb-4 text-justify text-indent-8">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              
+              <p className="mb-4 text-left leading-normal">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
+              <p className="mb-12 text-left leading-normal break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+              
+              {/* --- AREA TANDA TANGAN DENGAN OVERLAP TTD PNG (DIPERBESAR & DITURUNKAN) --- */}
+              <div className="w-full mt-8 break-inside-avoid text-[12pt] leading-normal flex">
+                {/* Bagian Ketua RW */}
+                <div className="w-1/2 text-center">
+                  <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
+                  <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
+                  <div className="h-24"></div>
+                  <p className="font-bold uppercase underline underline-offset-2">HERIYANSAH</p>
+                </div>
+                
+                {/* Bagian Ketua RT dengan TTD Melayang yang Diperbesar */}
+                <div className="w-1/2 text-center flex flex-col items-center">
+                  <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
+                  <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
+                  
+                  {/* Wadah Tanda Tangan */}
+                  <div className="h-24 relative w-full flex items-center justify-center">
+                    {/* Gambar Tanda Tangan (PNG) */}
+                    <img 
+                      src="/ttd-guntur.png" 
+                      alt="TTD" 
+                      className="absolute bottom-[-45px] w-64 h-auto z-10 pointer-events-none" 
+                      style={{ mixBlendMode: 'multiply' }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+
+                  {/* Nama Terang */}
+                  <p className="font-bold uppercase underline underline-offset-2 relative z-0">
+                    GUNTUR BAYU JANTORO
+                  </p>
+                </div>
+              </div>
+
+              {/* --- CATATAN PBB --- */}
+              <div className="mt-16 text-[12pt] leading-normal break-inside-avoid text-left">
+                <p>Catatan :</p>
                 <p>PBB Tahun {new Date().getFullYear()}</p>
-                <p className="font-bold">{cetakSurat?.pbb}</p>
+                <p>Status: <span className="font-bold">{cetakSurat?.pbb}</span></p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: Edit Surat Arsip */}
+      {/* MODAL EDIT & HAPUS (Tidak Berubah) */}
       {showSuratModal.edit && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden">
-          <form onSubmit={simpanEditSurat} className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="bg-yellow-500 p-4"><h3 className="text-lg font-bold text-white">Edit Arsip Surat: {selectedSurat?.nomor_surat}</h3></div>
+          <form onSubmit={simpanEditSurat} className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fade-in">
+            <div className="bg-yellow-500 p-4 break-inside-avoid"><h3 className="text-lg font-bold text-white">Edit Arsip Surat: {selectedSurat?.nomor_surat}</h3></div>
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Surat:</label>
-                <textarea required value={editSuratData?.deskripsi || ''} onChange={(e) => setEditSuratData({...editSuratData, deskripsi: e.target.value})} rows="4" className="w-full border p-2 rounded focus:ring-yellow-500"></textarea>
+                <textarea required value={editSuratData?.deskripsi || ''} onChange={(e) => setEditSuratData({...editSuratData, deskripsi: e.target.value})} rows="4" className="w-full border p-2 rounded focus:ring-yellow-500 bg-yellow-50"></textarea>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Tujuan Surat:</label>
-                <input required type="text" value={editSuratData?.tujuan_surat || ''} onChange={(e) => setEditSuratData({...editSuratData, tujuan_surat: e.target.value})} className="w-full border p-2 rounded focus:ring-yellow-500" />
+                <input required type="text" value={editSuratData?.tujuan_surat || ''} onChange={(e) => setEditSuratData({...editSuratData, tujuan_surat: e.target.value})} className="w-full border p-2 rounded focus:ring-yellow-500 bg-yellow-50" />
               </div>
             </div>
-            <div className="bg-gray-50 p-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowSuratModal({...showSuratModal, edit: false})} className="px-4 py-2 text-gray-600 bg-gray-200 rounded text-sm hover:bg-gray-300">Batal</button>
+            <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
+              <button type="button" onClick={() => setShowSuratModal({...showSuratModal, edit: false})} className="px-4 py-2 text-gray-600 bg-gray-200 rounded text-sm font-medium hover:bg-gray-300">Batal</button>
               <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-yellow-600 text-white rounded font-bold text-sm hover:bg-yellow-700">{isProcessing ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
             </div>
           </form>
         </div>
       )}
 
-      {/* MODAL: Hapus Surat Arsip */}
       {showSuratModal.delete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden">
-          <form onSubmit={simpanHapusSurat} className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-            <div className="bg-red-600 p-4"><h3 className="text-lg font-bold text-white">Hapus Arsip Surat</h3></div>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden animate-fade-in">
+          <form onSubmit={simpanHapusSurat} className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="bg-red-600 p-4 break-inside-avoid"><h3 className="text-lg font-bold text-white">Hapus Arsip Surat</h3></div>
             <div className="p-6">
-              <p className="text-gray-700 mb-4 text-sm">Anda yakin ingin menghapus permanen riwayat surat nomor <strong>{selectedSurat?.nomor_surat}</strong>?</p>
-              <p className="text-xs text-red-500 bg-red-50 p-3 rounded border border-red-100">Peringatan: Tindakan ini tidak akan mereset nomor urut surat, namun catatan ini akan hilang selamanya dari arsip.</p>
+              <p className="text-gray-700 mb-4 text-sm leading-relaxed">Anda yakin ingin menghapus permanen riwayat surat nomor <strong>{selectedSurat?.nomor_surat}</strong>?</p>
+              <p className="text-xs text-red-700 bg-red-50 p-3 rounded border border-red-100 leading-normal">Peringatan: Tindakan ini tidak akan mereset nomor urut surat, namun catatan ini akan hilang selamanya dari arsip di database.</p>
             </div>
             <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
-              <button type="button" onClick={() => setShowSuratModal({...showSuratModal, delete: false})} className="px-4 py-2 text-gray-600 bg-gray-200 rounded text-sm hover:bg-gray-300">Batal</button>
+              <button type="button" onClick={() => setShowSuratModal({...showSuratModal, delete: false})} className="px-4 py-2 text-gray-600 bg-gray-200 rounded text-sm font-medium hover:bg-gray-300">Batal</button>
               <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-red-600 text-white rounded font-bold text-sm hover:bg-red-700">{isProcessing ? 'Memproses...' : 'Hapus Permanen'}</button>
             </div>
           </form>
         </div>
       )}
+
+      {/* GLOBAL PRINT CSS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          @page { size: A4 portrait !important; margin: 0; }
+          body { background: white !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+          .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+          .max-w-5xl > :not(.print-container) { display: none !important; }
+          .print-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; shadow: none !important; }
+          .break-inside-avoid { break-inside: avoid !important; -webkit-column-break-inside: avoid !important; page-break-inside: avoid !important; }
+          table { page-break-inside: avoid !important; }
+        }
+        .text-capitalize { text-transform: capitalize; }
+        .text-indent-8 { text-indent: 1cm; }
+        .animate-fade-in { animation: fadeInBuat 0.3s ease-in-out; }
+        @keyframes fadeInBuat {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
     </div>
   );
 }

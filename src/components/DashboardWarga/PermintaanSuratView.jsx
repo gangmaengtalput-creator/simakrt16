@@ -6,11 +6,11 @@ export default function PermintaanSuratView({
   wargaAktif, 
   listPermintaan, 
   fetchDataWarga, 
+  cetakSurat, // Pastikan prop ini diterima dari Parent component
   setCetakSurat 
 }) {
   const [formSurat, setFormSurat] = useState({ tujuan: '', keterangan: '' });
   const [isProcessing, setIsProcessing] = useState(false);
-  
   const [modalInfo, setModalInfo] = useState({ open: false, message: '', type: 'success' }); 
 
   const submitPermintaanSurat = async (e) => {
@@ -36,41 +36,29 @@ export default function PermintaanSuratView({
     }
   };
 
-  // --- FUNGSI YANG DIPERBAIKI MENGGUNAKAN .maybeSingle() ---
   const aksiLihatSuratSelesai = async (idSuratKeterangan) => {
     if (!idSuratKeterangan) {
       setModalInfo({ open: true, message: "ID Surat tidak valid. Harap hubungi Ketua RT.", type: 'error' });
       return;
     }
 
-    // Gunakan .maybeSingle() agar tidak menjadi error jika data kosong/dihapus
     const { data: suratData, error } = await supabase
       .from('surat_keterangan')
       .select('*')
       .eq('id', idSuratKeterangan)
       .maybeSingle(); 
       
-    // Jika terjadi error jaringan atau sistem database
     if (error) {
-      setModalInfo({ 
-        open: true, 
-        message: "Terjadi kesalahan sistem database: " + error.message, 
-        type: 'error' 
-      });
+      setModalInfo({ open: true, message: "Terjadi kesalahan sistem database: " + error.message, type: 'error' });
       return;
     }
     
-    // Jika suratData null (artinya data sudah dihapus oleh Ketua RT di database)
     if (!suratData) {
-      setModalInfo({ 
-        open: true, 
-        message: "Dokumen Gagal Dimuat: Surat ini kemungkinan besar sudah DIHAPUS dari arsip oleh Ketua RT. Silakan buat permintaan baru.", 
-        type: 'warning' 
-      });
+      setModalInfo({ open: true, message: "Dokumen Gagal Dimuat: Surat ini kemungkinan besar sudah DIHAPUS dari arsip oleh Ketua RT.", type: 'warning' });
       return;
     }
 
-    // Jika data berhasil ditemukan
+    // Set data cetak dengan format yang sama dengan dashboard RT
     setCetakSurat({ 
       nomorSurat: suratData.nomor_surat, 
       warga: wargaAktif, 
@@ -82,70 +70,181 @@ export default function PermintaanSuratView({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 relative">
-      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md border print:hidden">
-        <h2 className="text-lg font-bold text-gray-800 border-b pb-3 mb-4">Buat Permintaan Surat Pengantar</h2>
-        <form onSubmit={submitPermintaanSurat} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Tujuan / Keperluan Surat:</label>
-            <input required type="text" value={formSurat.tujuan} onChange={(e) => setFormSurat({...formSurat, tujuan: e.target.value})} placeholder="Contoh: Melamar Pekerjaan, Pembuatan SKCK..." className="w-full border p-3 rounded-lg focus:ring-blue-500" />
+    <div className="max-w-5xl mx-auto space-y-6 relative print:font-serif">
+      
+      {/* TAMPILKAN FORM DAN TABEL HANYA JIKA TIDAK SEDANG MELIHAT SURAT */}
+      {!cetakSurat && (
+        <>
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md border print:hidden">
+            <h2 className="text-lg font-bold text-gray-800 border-b pb-3 mb-4">Buat Permintaan Surat Pengantar</h2>
+            <form onSubmit={submitPermintaanSurat} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tujuan / Keperluan Surat:</label>
+                <input required type="text" value={formSurat.tujuan} onChange={(e) => setFormSurat({...formSurat, tujuan: e.target.value})} placeholder="Contoh: Melamar Pekerjaan, Pembuatan SKCK..." className="w-full border p-3 rounded-lg focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Keterangan Tambahan:</label>
+                <textarea required value={formSurat.keterangan} onChange={(e) => setFormSurat({...formSurat, keterangan: e.target.value})} placeholder="Berikan penjelasan singkat untuk Ketua RT..." rows="3" className="w-full border p-3 rounded-lg focus:ring-blue-500"></textarea>
+              </div>
+              <div className="flex justify-end pt-2">
+                <button type="submit" disabled={isProcessing} className="w-full sm:w-auto bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {isProcessing ? 'Mengirim...' : 'Kirim Permintaan ke RT'}
+                </button>
+              </div>
+            </form>
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Keterangan Tambahan:</label>
-            <textarea required value={formSurat.keterangan} onChange={(e) => setFormSurat({...formSurat, keterangan: e.target.value})} placeholder="Berikan penjelasan singkat untuk Ketua RT..." rows="3" className="w-full border p-3 rounded-lg focus:ring-blue-500"></textarea>
-          </div>
-          <div className="flex justify-end pt-2">
-            <button type="submit" disabled={isProcessing} className="w-full sm:w-auto bg-blue-600 text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-              {isProcessing ? 'Mengirim...' : 'Kirim Permintaan ke RT'}
-            </button>
-          </div>
-        </form>
-      </div>
 
-      <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden">
-        <div className="bg-gray-800 p-4"><h3 className="font-bold text-white">Status Permintaan Surat Saya</h3></div>
-        <div className="overflow-x-auto p-4">
-          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
-            <thead>
-              <tr className="bg-gray-100 text-gray-700 text-sm border-b-2">
-                <th className="py-2 px-3">Tanggal</th>
-                <th className="py-2 px-3">Tujuan Surat</th>
-                <th className="py-2 px-3">Status</th>
-                <th className="py-2 px-3 text-center">Dokumen</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm divide-y">
-              {listPermintaan.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-3 text-gray-600">{new Date(item.created_at).toLocaleDateString('id-ID')}</td>
-                  <td className="py-3 px-3 font-medium">{item.tujuan}</td>
-                  <td className="py-3 px-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'Selesai' ? 'bg-green-100 text-green-700' : item.status === 'Ditolak' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-center">
-                    {item.status === 'Selesai' && item.surat_keterangan_id ? (
-                      <button 
-                        onClick={() => aksiLihatSuratSelesai(item.surat_keterangan_id)} 
-                        className="bg-blue-600 text-white px-4 py-1.5 rounded font-bold text-xs hover:bg-blue-700 shadow-sm transition-colors"
-                      >
-                        Lihat & Cetak PDF
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Menunggu Ketua RT</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden">
+            <div className="bg-gray-800 p-4"><h3 className="font-bold text-white">Status Permintaan Surat Saya</h3></div>
+            <div className="overflow-x-auto p-4">
+              <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700 text-sm border-b-2">
+                    <th className="py-2 px-3">Tanggal</th>
+                    <th className="py-2 px-3">Tujuan Surat</th>
+                    <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3 text-center">Dokumen</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm divide-y">
+                  {listPermintaan.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="py-3 px-3 text-gray-600">{new Date(item.created_at).toLocaleDateString('id-ID')}</td>
+                      <td className="py-3 px-3 font-medium">{item.tujuan}</td>
+                      <td className="py-3 px-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.status === 'Selesai' ? 'bg-green-100 text-green-700' : item.status === 'Ditolak' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        {item.status === 'Selesai' && item.surat_keterangan_id ? (
+                          <button 
+                            onClick={() => aksiLihatSuratSelesai(item.surat_keterangan_id)} 
+                            className="bg-blue-600 text-white px-4 py-1.5 rounded font-bold text-xs hover:bg-blue-700 shadow-sm transition-colors"
+                          >
+                            Lihat & Cetak PDF
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Menunggu Ketua RT</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ========================================== */}
+      {/* PRINT PREVIEW SURAT (SAMA DENGAN BUAT SURAT) */}
+      {/* ========================================== */}
+      {cetakSurat && (
+        <div className="print-container m-0 p-0 shadow-none">
+          <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-800 p-4 rounded-lg print:hidden sticky top-4 z-50">
+            <p className="text-white font-medium text-sm">Pratinjau Surat Siap Cetak (Kertas A4)</p>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={() => setCetakSurat(null)} className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded font-bold text-sm hover:bg-gray-500">
+                Tutup Dokumen
+              </button>
+              <button onClick={() => window.print()} className="flex-1 sm:flex-none px-6 py-2 bg-blue-500 text-white rounded font-bold text-sm hover:bg-blue-400">
+                Cetak Sekarang
+              </button>
+            </div>
+          </div>
+
+          <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0">
+            <div className="bg-white mx-auto shadow-2xl print:shadow-none font-serif text-[12pt] leading-relaxed text-justify text-black" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', padding: '1.5cm 2cm 1.5cm 2cm' }}>
+              
+              {/* --- KOP SURAT --- */}
+              <div className="relative border-b-[3px] border-black pb-3 mb-6 flex justify-center">
+                <div className="absolute left-2 top-1/2 -translate-y-1/2">
+                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
+                </div>
+                <div className="w-full text-center">
+                  <h2 className="text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
+                  <h2 className="text-[14pt] font-bold uppercase leading-tight whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                  <h1 className="text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
+                  <p className="text-[12pt] mt-1 leading-normal">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                </div>
+              </div>
+
+              {/* --- JUDUL SURAT --- */}
+              <div className="text-center mb-8 break-inside-avoid">
+                <h1 className="font-bold text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
+                <p className="text-[12pt]">Nomor : {cetakSurat?.nomorSurat}</p>
+              </div>
+
+              {/* --- ISI SURAT --- */}
+              <p className="mb-4 text-left">Yang bertanda tangan dibawah ini :</p>
+              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+                <tbody>
+                  <tr><td className="w-48 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
+                  <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td className="align-top">Ketua RT.16</td></tr>
+                </tbody>
+              </table>
+
+              <p className="mb-4 text-left">Dengan ini menerangkan bahwa :</p>
+              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+                <tbody>
+                  <tr><td className="w-48 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">NIK</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.nik || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Jenis Kelamin</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td></tr>
+                  <tr><td className="align-top py-0.5">Tempat/Tgl. Lahir</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Bangsa/Agama</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">Indonesia / {cetakSurat?.warga?.agama || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5 text-capitalize">{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td></tr>
+                  <tr><td className="align-top py-0.5">Kartu Keluarga No</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.no_kk || '-'}</td></tr>
+                </tbody>
+              </table>
+
+              <p className="mb-4 text-justify text-indent-8">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              
+              <p className="mb-4 text-left leading-normal">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
+              <p className="mb-12 text-left leading-normal break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+              
+              {/* --- AREA TANDA TANGAN --- */}
+              <div className="w-full mt-8 break-inside-avoid text-[12pt] leading-normal flex">
+                <div className="w-1/2 text-center">
+                  <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
+                  <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
+                  <div className="h-24"></div>
+                  <p className="font-bold uppercase underline underline-offset-2">HERIYANSAH</p>
+                </div>
+                
+                <div className="w-1/2 text-center flex flex-col items-center">
+                  <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
+                  <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
+                  
+                  <div className="h-24 relative w-full flex items-center justify-center">
+                    <img 
+                      src="/ttd-guntur.png" 
+                      alt="TTD" 
+                      className="absolute bottom-[-45px] w-64 h-auto z-10 pointer-events-none" 
+                      style={{ mixBlendMode: 'multiply' }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+
+                  <p className="font-bold uppercase underline underline-offset-2 relative z-0">
+                    GUNTUR BAYU JANTORO
+                  </p>
+                </div>
+              </div>
+
+              {/* --- CATATAN PBB --- */}
+              <div className="mt-16 text-[12pt] leading-normal break-inside-avoid text-left">
+                <p>Catatan :</p>
+                <p>PBB Tahun {new Date().getFullYear()}</p>
+                <p>Status: <span className="font-bold">{cetakSurat?.pbb}</span></p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ========================================== */}
       {/* MODAL NOTIFIKASI KUSTOM */}
-      {/* ========================================== */}
       {modalInfo.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4 print:hidden">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all scale-100">
@@ -153,25 +252,13 @@ export default function PermintaanSuratView({
               modalInfo.type === 'success' ? 'bg-green-500' : 
               modalInfo.type === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
             }`}>
-              
-              {/* Icon Sukses */}
-              {modalInfo.type === 'success' && (
-                <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-              )}
-              {/* Icon Peringatan */}
-              {modalInfo.type === 'warning' && (
-                <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              )}
-              {/* Icon Error */}
-              {modalInfo.type === 'error' && (
-                <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              )}
-
+              {modalInfo.type === 'success' && <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
+              {modalInfo.type === 'warning' && <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
+              {modalInfo.type === 'error' && <svg className="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>}
               <h3 className="text-xl font-bold">
                 {modalInfo.type === 'success' ? 'Berhasil' : modalInfo.type === 'warning' ? 'Peringatan' : 'Gagal'}
               </h3>
             </div>
-            
             <div className="p-6 text-center">
               <p className="text-gray-700 text-sm md:text-base mb-8">{modalInfo.message}</p>
               <button
@@ -187,6 +274,21 @@ export default function PermintaanSuratView({
           </div>
         </div>
       )}
+
+      {/* GLOBAL PRINT CSS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          @page { size: A4 portrait !important; margin: 0; }
+          body { background: white !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+          .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+          .max-w-5xl > :not(.print-container) { display: none !important; }
+          .print-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; shadow: none !important; }
+          .break-inside-avoid { break-inside: avoid !important; -webkit-column-break-inside: avoid !important; page-break-inside: avoid !important; }
+          table { page-break-inside: avoid !important; }
+        }
+        .text-capitalize { text-transform: capitalize; }
+        .text-indent-8 { text-indent: 1cm; }
+      `}} />
 
     </div>
   );

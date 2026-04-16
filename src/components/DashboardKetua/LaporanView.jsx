@@ -15,6 +15,75 @@ const arrEnergi = ['Listrik PLN','Diesel Umum','Genset Pribadi','Lampu Minyak Ta
 const arrHiburan = ['Jumlah Tempat Wisata','Hotel Bintang 5','Hotel Bintang 4','Hotel Bintang 3','Hotel Bintang 2','Hotel Bintang 1','Hotel Melati','Diskotik','Bilyard','Karaoke','Museum','Restoran','Bioskop','Mall/Plaza/Pusat Kebugaran'];
 const arrBersih = ['Tempat Pembuangan Sementara (TPS)','Tempat Pembuangan Akhir (TPA)','Alat Penghancur Sampah','Jumlah Gerobak Sampah','Jumlah Tong Sampah','Satgas Kebersihan','Anggota Satgas Kebersihan','Jumlah Pemulung','Tempat Pengelolaan Sampah','Pengelolaan Sampah Lingkungan','Pengelola Sampah Lainnya'];
 
+// ==========================================
+// KOMPONEN UI HELPER (Dipindah ke luar agar tidak hilang fokus saat mengetik)
+// ==========================================
+const EditNum = ({ val, onChange }) => (
+  <input type="number" value={val === 0 ? '' : val} onChange={e=>onChange(e.target.value)} className="w-full text-center bg-yellow-100 outline-none print:bg-transparent print:appearance-none focus:ring-1 focus:ring-blue-500 font-medium" />
+);
+
+const EditText = ({ val, onChange }) => (
+  <input type="text" value={val||''} onChange={e=>onChange(e.target.value)} className="w-full text-center bg-yellow-100 outline-none print:bg-transparent focus:ring-1 focus:ring-blue-500 px-1 font-medium" />
+);
+
+const Table4 = ({ num, title, headers, rows, showTotal = true }) => (
+  <div className="mb-4 print:mb-1">
+    <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">{num}</div><div>{title}</div></div>
+    <table className="w-full border-collapse border border-black text-[9pt] print:text-[8pt]">
+      <thead>
+        <tr className="font-bold text-center bg-gray-100">
+          <th className="border border-black p-1 text-left pl-2">{headers[0]}</th>
+          <th className="border border-black p-1 w-32">{headers[1]}</th>
+          <th className="border border-black p-1 w-32">{headers[2]}</th>
+          <th className="border border-black p-1 w-24">JUMLAH</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={r.isSub ? "bg-white" : "hover:bg-gray-50"}>
+            <td className={`border border-black p-1 pl-2 ${r.isSub ? 'text-gray-600 pl-6' : ''}`}>{r.label}</td>
+            <td className="border border-black p-1 text-center">{r.l}</td>
+            <td className="border border-black p-1 text-center">{r.p}</td>
+            <td className="border border-black p-1 text-center font-bold bg-gray-50">{r.j}</td>
+          </tr>
+        ))}
+        {showTotal && (
+          <tr className="font-bold bg-gray-100">
+            <td className="border border-black p-1 pl-2 text-right pr-2">Jumlah Total</td>
+            <td className="border border-black p-1 text-center">{rows.reduce((a,c)=>a+(Number(c.lVal !== undefined ? c.lVal : c.l)||0),0)}</td>
+            <td className="border border-black p-1 text-center">{rows.reduce((a,c)=>a+(Number(c.pVal !== undefined ? c.pVal : c.p)||0),0)}</td>
+            <td className="border border-black p-1 text-center">{rows.reduce((a,c)=>a+(Number(c.jVal !== undefined ? c.jVal : c.j)||0),0)}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+);
+
+const Table2 = ({ num, title, headers, rows }) => (
+  <div className="mb-4 print:mb-1">
+    <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">{num}</div><div>{title}</div></div>
+    <table className="w-full border-collapse border border-black text-[9pt] print:text-[8pt]">
+      <thead>
+        <tr className="font-bold text-center bg-gray-100">
+          <th className="border border-black p-1 w-10">NO</th>
+          <th className="border border-black p-1 text-left pl-2">{headers[0]}</th>
+          <th className="border border-black p-1 w-48">{headers[1]}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className="hover:bg-gray-50">
+            <td className="border border-black p-1 text-center">{i+1}</td>
+            <td className="border border-black p-1 pl-2">{r.label}</td>
+            <td className="border border-black p-1 text-center">{r.val}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
 export default function LaporanView({ setActiveView }) {
   const [subView, setSubView] = useState('menu'); 
   const tahunSekarang = new Date().getFullYear().toString();
@@ -30,7 +99,7 @@ export default function LaporanView({ setActiveView }) {
       bulan: 'JANUARI - MARET', tahun: tahunSekarang, nama_rt: 'GUNTUR BAYU JANTORO',
       batasUtara: 'RT 15', batasSelatan: 'RT 17', batasTimur: 'RT 17', batasBarat: 'RT 15',
       mutasiLahir: 0, mutasiMati: 0, mutasiDatang: 0,
-      etnis: Array(22).fill({l:0, p:0}), cacatFisik: Array(7).fill({l:0, p:0}), cacatMental: Array(4).fill({l:0, p:0}),
+      cacatFisik: Array(7).fill({l:0, p:0}), cacatMental: Array(4).fill({l:0, p:0}),
       kewarganegaraanWNA: {l:0, p:0}, kewarganegaraanDwi: {l:0, p:0},
       ibadah: Array(7).fill(0), olahraga: Array(11).fill(0), kesehatanPrasarana: Array(14).fill(0), kesehatanSarana: Array(10).fill(0),
       pendidikanSewa: Array(12).fill(0), pendidikanMilik: Array(12).fill(0), energi: Array(7).fill(0), hiburan: Array(14).fill(0), kebersihan: Array(11).fill('')
@@ -42,6 +111,8 @@ export default function LaporanView({ setActiveView }) {
   const updateManual = (key, val) => setManual(p => ({...p, [key]: val}));
   const updateArrObj = (key, idx, prop, val) => setManual(p => { const arr = [...p[key]]; arr[idx] = {...arr[idx], [prop]: Number(val)||0}; return {...p, [key]: arr}; });
   const updateArr = (key, idx, val) => setManual(p => { const arr = [...p[key]]; arr[idx] = val; return {...p, [key]: arr}; });
+  // PERBAIKAN BUG WNA: Tambah updater untuk objek biasa
+  const updateObjProp = (key, prop, val) => setManual(p => ({...p, [key]: {...p[key], [prop]: Number(val)||0}}));
 
   const getTanggalLaporanTriwulan = (periodeBulan, tahun) => {
     const y = parseInt(tahun) || new Date().getFullYear();
@@ -94,7 +165,7 @@ export default function LaporanView({ setActiveView }) {
     const cPek = (kunci) => fmtLPJ(aktif.filter(w => String(w.pekerjaan).toUpperCase().includes(kunci)));
     const cAgama = (kunci) => fmtLPJ(aktif.filter(w => String(w.agama).toUpperCase().includes(kunci)));
 
-    // TENAGA KERJA (TIDAK DOUBLE COUNT)
+    // TENAGA KERJA
     const tk_0_6 = cUmur(0, 6);
     const tk_7_18 = cUmur(7, 18);
     const tk_7_18_sekolah = fmtLPJ(aktif.filter(w => hitungUmur(w.tgl_lahir) >= 7 && hitungUmur(w.tgl_lahir) <= 18 && String(w.pekerjaan).toUpperCase().includes('PELAJAR')));
@@ -116,11 +187,25 @@ export default function LaporanView({ setActiveView }) {
        return false;
     }));
 
+    // ETNIS (OTOMATIS)
+    const etnisStats = arrEtnis.map(() => ({ l: 0, p: 0, j: 0 }));
+    aktif.forEach(w => {
+      if (!w.etnis) return;
+      let idx = arrEtnis.findIndex(e => e.toLowerCase() === w.etnis.toLowerCase());
+      // Jika tidak ada di daftar baku, masukkan ke 'Lainnya' (index terakhir)
+      if (idx === -1) idx = arrEtnis.length - 1; 
+
+      const LakiLaki = String(w.jenis_kelamin).toUpperCase().startsWith('L');
+      if (LakiLaki) etnisStats[idx].l++; else etnisStats[idx].p++;
+      etnisStats[idx].j++;
+    });
+
     return {
       totL: aktif.filter(isLaki).length, totP: aktif.filter(isPr).length, totJ: aktif.length,
       kk: new Set(aktif.map(w => w.no_kk).filter(Boolean)).size,
       pindah: dataWargaLokal.filter(w => w.status_warga === 'pindah' || w.status_warga === 'mantan').length,
       umur: { u0_5: cUmur(0,5), u6_10: cUmur(6,10), u11_17: cUmur(11,17), u18_60: cUmur(18,60), u60p: cUmur(61,999) },
+      etnis: etnisStats,
       pendidikan: { 
         sd: cEdu('SD'), smp: { l: cEdu('SMP').l + cEdu('SLTP').l, p: cEdu('SMP').p + cEdu('SLTP').p, j: cEdu('SMP').j + cEdu('SLTP').j }, 
         sma: { l: cEdu('SMA').l + cEdu('SMK').l + cEdu('SLTA').l, p: cEdu('SMA').p + cEdu('SMK').p + cEdu('SLTA').p, j: cEdu('SMA').j + cEdu('SMK').j + cEdu('SLTA').j }, 
@@ -257,7 +342,7 @@ export default function LaporanView({ setActiveView }) {
     csv += row(['VII.','ETNIS']);
     csv += row(['ETNIS','','','','LAKI-LAKI (ORANG)','PEREMPUAN (ORANG)','JUMLAH']);
     arrEtnis.forEach((nama, i) => {
-      csv += row([i+1, nama, '', '', manual.etnis[i].l, manual.etnis[i].p, manual.etnis[i].l+manual.etnis[i].p]);
+      csv += row([i+1, nama, '', '', stats.etnis[i].l, stats.etnis[i].p, stats.etnis[i].j]);
     });
     csv += row([]);
 
@@ -344,70 +429,6 @@ export default function LaporanView({ setActiveView }) {
     link.click();
     document.body.removeChild(link);
   };
-
-  // ==========================================
-  // KOMPONEN UI HELPER
-  // ==========================================
-  const EditNum = ({ val, onChange }) => <input type="number" value={val||0} onChange={e=>onChange(e.target.value)} className="w-full text-center bg-yellow-100 outline-none print:bg-transparent print:appearance-none focus:ring-1 focus:ring-blue-500 font-medium" />;
-  const EditText = ({ val, onChange }) => <input type="text" value={val||''} onChange={e=>onChange(e.target.value)} className="w-full text-center bg-yellow-100 outline-none print:bg-transparent focus:ring-1 focus:ring-blue-500 px-1 font-medium" />;
-
-  const Table4 = ({ num, title, headers, rows, showTotal = true }) => (
-    <div className="mb-4 print:mb-1">
-      <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">{num}</div><div>{title}</div></div>
-      <table className="w-full border-collapse border border-black text-[9pt] print:text-[8pt]">
-        <thead>
-          <tr className="font-bold text-center bg-gray-100">
-            <th className="border border-black p-1 text-left pl-2">{headers[0]}</th>
-            <th className="border border-black p-1 w-32">{headers[1]}</th>
-            <th className="border border-black p-1 w-32">{headers[2]}</th>
-            <th className="border border-black p-1 w-24">JUMLAH</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className={r.isSub ? "bg-white" : "hover:bg-gray-50"}>
-              <td className={`border border-black p-1 pl-2 ${r.isSub ? 'text-gray-600 pl-6' : ''}`}>{r.label}</td>
-              <td className="border border-black p-1 text-center">{r.l}</td>
-              <td className="border border-black p-1 text-center">{r.p}</td>
-              <td className="border border-black p-1 text-center font-bold bg-gray-50">{r.j}</td>
-            </tr>
-          ))}
-          {showTotal && (
-            <tr className="font-bold bg-gray-100">
-              <td className="border border-black p-1 pl-2 text-right pr-2">Jumlah Total</td>
-              <td className="border border-black p-1 text-center">{rows.reduce((a,c)=>a+(Number(c.lVal !== undefined ? c.lVal : c.l)||0),0)}</td>
-              <td className="border border-black p-1 text-center">{rows.reduce((a,c)=>a+(Number(c.pVal !== undefined ? c.pVal : c.p)||0),0)}</td>
-              <td className="border border-black p-1 text-center">{rows.reduce((a,c)=>a+(Number(c.jVal !== undefined ? c.jVal : c.j)||0),0)}</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const Table2 = ({ num, title, headers, rows }) => (
-    <div className="mb-4 print:mb-1">
-      <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">{num}</div><div>{title}</div></div>
-      <table className="w-full border-collapse border border-black text-[9pt] print:text-[8pt]">
-        <thead>
-          <tr className="font-bold text-center bg-gray-100">
-            <th className="border border-black p-1 w-10">NO</th>
-            <th className="border border-black p-1 text-left pl-2">{headers[0]}</th>
-            <th className="border border-black p-1 w-48">{headers[1]}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="hover:bg-gray-50">
-              <td className="border border-black p-1 text-center">{i+1}</td>
-              <td className="border border-black p-1 pl-2">{r.label}</td>
-              <td className="border border-black p-1 text-center">{r.val}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 
   return (
     <div className="max-w-5xl mx-auto relative">
@@ -501,10 +522,14 @@ export default function LaporanView({ setActiveView }) {
                 </table>
                 
                 <div className="break-inside-avoid mt-8 flex justify-end w-full">
-                  <div className="text-center w-64 uppercase font-bold print:text-[8pt]">
+                  <div className="text-center w-64 uppercase font-bold print:text-[8pt] relative">
                     <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1] || new Date().toLocaleDateString('id-ID')}</p>
-                    <p className="mb-16">Ketua RT.16 RW.04</p>
-                    <p className="underline underline-offset-2">GUNTUR BAYU JANTORO</p>
+                    <p className="mb-6">Ketua RT.16 RW.04</p>
+                    {/* TTD DATADASAR: Gambar TTD menggores teks */}
+                    <div className="relative inline-block w-full">
+                      <img src="/ttd-guntur.png" alt="Tanda Tangan" className="absolute left-1/2 -top-16 transform -translate-x-1/2 w-50 h-auto z-10 pointer-events-none opacity-90 mix-blend-multiply" />
+                      <p className="relative z-0 underline underline-offset-2 mt-8">GUNTUR BAYU JANTORO</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -538,221 +563,236 @@ export default function LaporanView({ setActiveView }) {
               <div className="w-full text-[10pt] print:text-[8pt] leading-tight text-black font-sans print-container">
                 
                 {/* --- HALAMAN 1 --- */}
-                <div className="flex flex-col items-center justify-center mb-4 pb-2 border-b-2 border-black break-inside-avoid">
-                  <div className="flex items-center gap-6 w-full justify-center">
-                    <img src="/logo-palembang.png" alt="Logo" className="w-20 h-20 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
-                    <div className="text-center uppercase tracking-wide">
-                      <h2 className="text-xl font-bold leading-tight print:text-[14pt]">PEMERINTAH KOTA PALEMBANG</h2>
+                <div className="print-page">
+                  {/* KOP TRIWULAN DIPERBAIKI: Logo kiri, Text center & ukuran font disamakan */}
+                  <div className="flex items-center mb-4 pb-2 border-b-2 border-black break-inside-avoid">
+                    <img src="/logo-palembang.png" alt="Logo" className="w-20 h-20 object-contain flex-shrink-0" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
+                    <div className="flex-1 text-center uppercase tracking-wide pr-20">
+                      <h1 className="text-2xl font-black leading-tight print:text-[16pt]">PEMERINTAH KOTA PALEMBANG</h1>
                       <h1 className="text-2xl font-black leading-tight print:text-[16pt]">LAPORAN TRIWULAN KETUA RT</h1>
                     </div>
                   </div>
-                </div>
 
-                <div className="mb-4 uppercase font-bold text-[10pt] print:text-[8pt] break-inside-avoid">
-                  <table className="w-full border-collapse">
-                    <tbody>
-                      <tr><td className="w-64 pb-1">HARI / TANGGAL LAPORAN</td><td className="w-4 pb-1">:</td><td className="pb-1 text-blue-800 print:text-black">{tanggalLaporanOtomatis}</td></tr>
-                      <tr><td className="pb-1">BULAN</td><td className="pb-1">:</td><td className="pb-1">{manual.bulan}</td></tr>
-                      <tr><td className="pb-1">TAHUN</td><td className="pb-1">:</td><td className="pb-1">{manual.tahun}</td></tr>
-                      <tr><td className="pb-1">NAMA KETUA RT</td><td className="pb-1">:</td><td className="pb-1">{manual.nama_rt}</td></tr>
-                      <tr><td className="pb-1">JABATAN</td><td className="pb-1">:</td><td className="pb-1">KETUA RT 16</td></tr>
-                      <tr><td className="pb-1">ALAMAT</td><td className="pb-1">:</td><td className="pb-1">JL KAPTEN ROBANI KADIR LRG MAENG NO 06 RT 016 RW 004</td></tr>
-                      <tr><td className="pb-1">KELURAHAN</td><td className="pb-1">:</td><td className="pb-1">TALANG PUTRI</td></tr>
-                      <tr><td className="pb-1">KECAMATAN</td><td className="pb-1">:</td><td className="pb-1">PLAJU</td></tr>
-                    </tbody>
-                  </table>
-                </div>
+                  <div className="mb-4 uppercase font-bold text-[10pt] print:text-[8pt] break-inside-avoid">
+                    <table className="w-full border-collapse">
+                      <tbody>
+                        <tr><td className="w-64 pb-1">HARI / TANGGAL LAPORAN</td><td className="w-4 pb-1">:</td><td className="pb-1 text-blue-800 print:text-black">{tanggalLaporanOtomatis}</td></tr>
+                        <tr><td className="pb-1">BULAN</td><td className="pb-1">:</td><td className="pb-1">{manual.bulan}</td></tr>
+                        <tr><td className="pb-1">TAHUN</td><td className="pb-1">:</td><td className="pb-1">{manual.tahun}</td></tr>
+                        <tr><td className="pb-1">NAMA KETUA RT</td><td className="pb-1">:</td><td className="pb-1">{manual.nama_rt}</td></tr>
+                        <tr><td className="pb-1">JABATAN</td><td className="pb-1">:</td><td className="pb-1">KETUA RT 16</td></tr>
+                        <tr><td className="pb-1">ALAMAT</td><td className="pb-1">:</td><td className="pb-1">JL KAPTEN ROBANI KADIR LRG MAENG NO 06 RT 016 RW 004</td></tr>
+                        <tr><td className="pb-1">KELURAHAN</td><td className="pb-1">:</td><td className="pb-1">TALANG PUTRI</td></tr>
+                        <tr><td className="pb-1">KECAMATAN</td><td className="pb-1">:</td><td className="pb-1">PLAJU</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
 
-                <div className="mb-4 break-inside-avoid">
-                  <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">I.</div><div>BATAS WILAYAH RT</div></div>
-                  <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
-                    <tr><td className="w-8">a</td><td className="w-32">UTARA</td><td className="w-2">:</td><td className="w-32 font-bold"><EditText val={manual.batasUtara} onChange={v=>updateManual('batasUtara',v)} /></td><td></td></tr>
-                    <tr><td>b</td><td>SELATAN</td><td>:</td><td className="font-bold"><EditText val={manual.batasSelatan} onChange={v=>updateManual('batasSelatan',v)} /></td><td></td></tr>
-                    <tr><td>c</td><td>TIMUR</td><td>:</td><td className="font-bold"><EditText val={manual.batasTimur} onChange={v=>updateManual('batasTimur',v)} /></td><td></td></tr>
-                    <tr><td>d</td><td>BARAT</td><td>:</td><td className="font-bold"><EditText val={manual.batasBarat} onChange={v=>updateManual('batasBarat',v)} /></td><td></td></tr>
-                  </tbody></table>
-                </div>
+                  <div className="mb-4 break-inside-avoid">
+                    <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">I.</div><div>BATAS WILAYAH RT</div></div>
+                    <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
+                      <tr><td className="w-8">a</td><td className="w-32">UTARA</td><td className="w-2">:</td><td className="w-32 font-bold"><EditText val={manual.batasUtara} onChange={v=>updateManual('batasUtara',v)} /></td><td></td></tr>
+                      <tr><td>b</td><td>SELATAN</td><td>:</td><td className="font-bold"><EditText val={manual.batasSelatan} onChange={v=>updateManual('batasSelatan',v)} /></td><td></td></tr>
+                      <tr><td>c</td><td>TIMUR</td><td>:</td><td className="font-bold"><EditText val={manual.batasTimur} onChange={v=>updateManual('batasTimur',v)} /></td><td></td></tr>
+                      <tr><td>d</td><td>BARAT</td><td>:</td><td className="font-bold"><EditText val={manual.batasBarat} onChange={v=>updateManual('batasBarat',v)} /></td><td></td></tr>
+                    </tbody></table>
+                  </div>
 
-                <div className="mb-4 break-inside-avoid">
-                  <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">II.</div><div>DATA PENDUDUK</div></div>
-                  <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
-                    <tr><td className="w-8 pb-1">a</td><td className="w-64">JUMLAH PENDUDUK</td><td className="w-2">:</td><td className="w-20 text-center font-bold bg-gray-100">{stats.totJ}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">b</td><td>JUMLAH PENDUDUK LAKI-LAKI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totL}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">c</td><td>JUMLAH PENDUDUK PEREMPUAN</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totP}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">d</td><td>JUMLAH KEPALA KELUARGA</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.kk}</td><td>KK</td></tr>
-                    <tr><td className="pb-1">e</td><td>JUMLAH KELAHIRAN BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiLahir} onChange={v=>updateManual('mutasiLahir',v)} /></td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">f</td><td>JUMLAH KEMATIAN BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiMati} onChange={v=>updateManual('mutasiMati',v)} /></td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">g</td><td>JUMLAH PENDUDUK DATANG BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiDatang} onChange={v=>updateManual('mutasiDatang',v)} /></td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">h</td><td>JUMLAH PENDUDUK PINDAH BULAN INI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.pindah}</td><td>ORANG</td></tr>
-                  </tbody></table>
-                </div>
+                  <div className="mb-4 break-inside-avoid">
+                    <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">II.</div><div>DATA PENDUDUK</div></div>
+                    <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
+                      <tr><td className="w-8 pb-1">a</td><td className="w-64">JUMLAH PENDUDUK</td><td className="w-2">:</td><td className="w-20 text-center font-bold bg-gray-100">{stats.totJ}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">b</td><td>JUMLAH PENDUDUK LAKI-LAKI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totL}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">c</td><td>JUMLAH PENDUDUK PEREMPUAN</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totP}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">d</td><td>JUMLAH KEPALA KELUARGA</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.kk}</td><td>KK</td></tr>
+                      <tr><td className="pb-1">e</td><td>JUMLAH KELAHIRAN BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiLahir} onChange={v=>updateManual('mutasiLahir',v)} /></td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">f</td><td>JUMLAH KEMATIAN BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiMati} onChange={v=>updateManual('mutasiMati',v)} /></td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">g</td><td>JUMLAH PENDUDUK DATANG BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiDatang} onChange={v=>updateManual('mutasiDatang',v)} /></td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">h</td><td>JUMLAH PENDUDUK PINDAH BULAN INI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.pindah}</td><td>ORANG</td></tr>
+                    </tbody></table>
+                  </div>
 
-                <div className="mb-4 break-inside-avoid">
-                  <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">III.</div><div>DATA KELOMPOK UMUR</div></div>
-                  <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
-                    <tr><td className="w-8 pb-1">a</td><td className="w-64">USIA 0 - 5 TAHUN</td><td className="w-2">:</td><td className="w-20 text-center bg-gray-50">{stats.umur.u0_5.j}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">b</td><td>USIA 6 - 10 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u6_10.j}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">c</td><td>USIA 11 - 17 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u11_17.j}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">d</td><td>USIA 18 - 60 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u18_60.j}</td><td>ORANG</td></tr>
-                    <tr><td className="pb-1">e</td><td>USIA 60 TAHUN KE ATAS</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u60p.j}</td><td>ORANG</td></tr>
-                    <tr className="font-bold border-t border-black"><td colSpan={2} className="pt-1">JUMLAH</td><td className="pt-1">:</td><td className="text-center pt-1">{stats.totJ}</td><td className="pt-1">ORANG</td></tr>
-                  </tbody></table>
-                </div>
+                  <div className="mb-4 break-inside-avoid">
+                    <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">III.</div><div>DATA KELOMPOK UMUR</div></div>
+                    <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
+                      <tr><td className="w-8 pb-1">a</td><td className="w-64">USIA 0 - 5 TAHUN</td><td className="w-2">:</td><td className="w-20 text-center bg-gray-50">{stats.umur.u0_5.j}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">b</td><td>USIA 6 - 10 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u6_10.j}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">c</td><td>USIA 11 - 17 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u11_17.j}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">d</td><td>USIA 18 - 60 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u18_60.j}</td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">e</td><td>USIA 60 TAHUN KE ATAS</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u60p.j}</td><td>ORANG</td></tr>
+                      <tr className="font-bold border-t border-black"><td colSpan={2} className="pt-1">JUMLAH</td><td className="pt-1">:</td><td className="text-center pt-1">{stats.totJ}</td><td className="pt-1">ORANG</td></tr>
+                    </tbody></table>
+                  </div>
 
-                <Table4 num="IV." title="DATA PENDIDIKAN DAN PEKERJAAN" headers={['TINGKAT PENDIDIKAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '1. Usia 3 - 6 tahun yang belum masuk TK', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '2. Usia 3 - 6 tahun yang sedang TK / Playgrup', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '3. Usia 7 - 18 tahun yang tidak pernah sekolah', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '4. Usia 7 - 18 tahun yang sedang sekolah', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '5. Usia 18 - 56 tahun tidak pernah sekolah', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '6. Usia 18 - 56 tahun tidak tamat SD', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '7. Usia 18 - 56 tahun tidak tamat SLTP', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '8. Usia 18 - 56 tahun tidak tamat SLTA', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '9. Tamat SD / sederajat', l: stats.pendidikan.sd.l, p: stats.pendidikan.sd.p, j: stats.pendidikan.sd.j, lVal: stats.pendidikan.sd.l, pVal: stats.pendidikan.sd.p, jVal: stats.pendidikan.sd.j },
-                  { label: '10. Tamat SMP / sederajat', l: stats.pendidikan.smp.l, p: stats.pendidikan.smp.p, j: stats.pendidikan.smp.j, lVal: stats.pendidikan.smp.l, pVal: stats.pendidikan.smp.p, jVal: stats.pendidikan.smp.j },
-                  { label: '11. Tamat SMA / sederajat', l: stats.pendidikan.sma.l, p: stats.pendidikan.sma.p, j: stats.pendidikan.sma.j, lVal: stats.pendidikan.sma.l, pVal: stats.pendidikan.sma.p, jVal: stats.pendidikan.sma.j },
-                  { label: '12. Tamat D-1 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '13. Tamat D-2 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '14. Tamat D-3 / sederajat', l: stats.pendidikan.d.l, p: stats.pendidikan.d.p, j: stats.pendidikan.d.j, lVal: stats.pendidikan.d.l, pVal: stats.pendidikan.d.p, jVal: stats.pendidikan.d.j },
-                  { label: '15. Tamat S-1 / sederajat', l: stats.pendidikan.s1.l, p: stats.pendidikan.s1.p, j: stats.pendidikan.s1.j, lVal: stats.pendidikan.s1.l, pVal: stats.pendidikan.s1.p, jVal: stats.pendidikan.s1.j }
-                ]} showTotal={false} />
+                  <Table4 num="IV." title="DATA PENDIDIKAN DAN PEKERJAAN" headers={['TINGKAT PENDIDIKAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '1. Usia 3 - 6 tahun yang belum masuk TK', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '2. Usia 3 - 6 tahun yang sedang TK / Playgrup', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '3. Usia 7 - 18 tahun yang tidak pernah sekolah', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '4. Usia 7 - 18 tahun yang sedang sekolah', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '5. Usia 18 - 56 tahun tidak pernah sekolah', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '6. Usia 18 - 56 tahun tidak tamat SD', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '7. Usia 18 - 56 tahun tidak tamat SLTP', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '8. Usia 18 - 56 tahun tidak tamat SLTA', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '9. Tamat SD / sederajat', l: stats.pendidikan.sd.l, p: stats.pendidikan.sd.p, j: stats.pendidikan.sd.j, lVal: stats.pendidikan.sd.l, pVal: stats.pendidikan.sd.p, jVal: stats.pendidikan.sd.j },
+                    { label: '10. Tamat SMP / sederajat', l: stats.pendidikan.smp.l, p: stats.pendidikan.smp.p, j: stats.pendidikan.smp.j, lVal: stats.pendidikan.smp.l, pVal: stats.pendidikan.smp.p, jVal: stats.pendidikan.smp.j },
+                    { label: '11. Tamat SMA / sederajat', l: stats.pendidikan.sma.l, p: stats.pendidikan.sma.p, j: stats.pendidikan.sma.j, lVal: stats.pendidikan.sma.l, pVal: stats.pendidikan.sma.p, jVal: stats.pendidikan.sma.j },
+                    { label: '12. Tamat D-1 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '13. Tamat D-2 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '14. Tamat D-3 / sederajat', l: stats.pendidikan.d.l, p: stats.pendidikan.d.p, j: stats.pendidikan.d.j, lVal: stats.pendidikan.d.l, pVal: stats.pendidikan.d.p, jVal: stats.pendidikan.d.j },
+                    { label: '15. Tamat S-1 / sederajat', l: stats.pendidikan.s1.l, p: stats.pendidikan.s1.p, j: stats.pendidikan.s1.j, lVal: stats.pendidikan.s1.l, pVal: stats.pendidikan.s1.p, jVal: stats.pendidikan.s1.j }
+                  ]} showTotal={false} />
+                </div>
 
                 {/* =========== BREAK 1: SETELAH S-1 =========== */}
                 <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
                 {/* --- HALAMAN 2 --- */}
 
-                <Table4 num="" title="(Lanjutan) DATA PENDIDIKAN" headers={['TINGKAT PENDIDIKAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '16. Tamat S-2 / sederajat', l: stats.pendidikan.s23.l, p: stats.pendidikan.s23.p, j: stats.pendidikan.s23.j, lVal: stats.pendidikan.s23.l, pVal: stats.pendidikan.s23.p, jVal: stats.pendidikan.s23.j },
-                  { label: '17. Tamat S-3 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '18. Tamat SLB A', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '19. Tamat SLB B', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '20. Tamat SLB C', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: 'Jumlah Total Penduduk', l: stats.totL, p: stats.totP, j: stats.totJ, lVal: 0, pVal: 0, jVal: 0, bold: true }
-                ]} showTotal={false} />
+                <div className="print-page pt-4 print:pt-0">
+                  <Table4 num="" title="" headers={['TINGKAT PENDIDIKAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '16. Tamat S-2 / sederajat', l: stats.pendidikan.s23.l, p: stats.pendidikan.s23.p, j: stats.pendidikan.s23.j, lVal: stats.pendidikan.s23.l, pVal: stats.pendidikan.s23.p, jVal: stats.pendidikan.s23.j },
+                    { label: '17. Tamat S-3 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '18. Tamat SLB A', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '19. Tamat SLB B', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '20. Tamat SLB C', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: 'Jumlah Total Penduduk', l: stats.totL, p: stats.totP, j: stats.totJ, lVal: 0, pVal: 0, jVal: 0, bold: true }
+                  ]} showTotal={false} />
 
-                <Table4 num="" title="" headers={['JENIS PEKERJAAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '1. Petani', l: stats.pekerjaan.tani.l, p: stats.pekerjaan.tani.p, j: stats.pekerjaan.tani.j, lVal: stats.pekerjaan.tani.l, pVal: stats.pekerjaan.tani.p, jVal: stats.pekerjaan.tani.j },
-                  { label: '2. Buruh Tani', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '3. Buruh Migran Perempuan', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '4. Buruh Migran Laki-laki', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '5. Pegawai Negeri Sipil', l: stats.pekerjaan.pns.l, p: stats.pekerjaan.pns.p, j: stats.pekerjaan.pns.j, lVal: stats.pekerjaan.pns.l, pVal: stats.pekerjaan.pns.p, jVal: stats.pekerjaan.pns.j },
-                  { label: '6. Pengrajin Industri Rumah Tangga', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '7. Pedagang Keliling', l: stats.pekerjaan.dagang.l, p: stats.pekerjaan.dagang.p, j: stats.pekerjaan.dagang.j, lVal: stats.pekerjaan.dagang.l, pVal: stats.pekerjaan.dagang.p, jVal: stats.pekerjaan.dagang.j },
-                  { label: '8. Peternak', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '9. Dokter Swasta', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '10. Bidan Swasta', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
-                  { label: '11. Pensiunan TNI / POLRI', l: stats.pekerjaan.tni.l, p: stats.pekerjaan.tni.p, j: stats.pekerjaan.tni.j, lVal: stats.pekerjaan.tni.l, pVal: stats.pekerjaan.tni.p, jVal: stats.pekerjaan.tni.j },
-                  { label: '12. Ibu Rumah Tangga', l: stats.pekerjaan.irt.l, p: stats.pekerjaan.irt.p, j: stats.pekerjaan.irt.j, lVal: stats.pekerjaan.irt.l, pVal: stats.pekerjaan.irt.p, jVal: stats.pekerjaan.irt.j },
-                  { label: '13. Wiraswasta / Lainnya', l: stats.pekerjaan.swasta.l, p: stats.pekerjaan.swasta.p, j: stats.pekerjaan.swasta.j, lVal: stats.pekerjaan.swasta.l, pVal: stats.pekerjaan.swasta.p, jVal: stats.pekerjaan.swasta.j },
-                  { label: 'Jumlah Total Penduduk', l: stats.totL, p: stats.totP, j: stats.totJ, lVal: 0, pVal: 0, jVal: 0, bold: true }
-                ]} showTotal={false} />
+                  <Table4 num="" title="" headers={['JENIS PEKERJAAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '1. Petani', l: stats.pekerjaan.tani.l, p: stats.pekerjaan.tani.p, j: stats.pekerjaan.tani.j, lVal: stats.pekerjaan.tani.l, pVal: stats.pekerjaan.tani.p, jVal: stats.pekerjaan.tani.j },
+                    { label: '2. Buruh Tani', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '3. Buruh Migran Perempuan', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '4. Buruh Migran Laki-laki', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '5. Pegawai Negeri Sipil', l: stats.pekerjaan.pns.l, p: stats.pekerjaan.pns.p, j: stats.pekerjaan.pns.j, lVal: stats.pekerjaan.pns.l, pVal: stats.pekerjaan.pns.p, jVal: stats.pekerjaan.pns.j },
+                    { label: '6. Pengrajin Industri Rumah Tangga', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '7. Pedagang Keliling', l: stats.pekerjaan.dagang.l, p: stats.pekerjaan.dagang.p, j: stats.pekerjaan.dagang.j, lVal: stats.pekerjaan.dagang.l, pVal: stats.pekerjaan.dagang.p, jVal: stats.pekerjaan.dagang.j },
+                    { label: '8. Peternak', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '9. Dokter Swasta', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '10. Bidan Swasta', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
+                    { label: '11. Pensiunan TNI / POLRI', l: stats.pekerjaan.tni.l, p: stats.pekerjaan.tni.p, j: stats.pekerjaan.tni.j, lVal: stats.pekerjaan.tni.l, pVal: stats.pekerjaan.tni.p, jVal: stats.pekerjaan.tni.j },
+                    { label: '12. Ibu Rumah Tangga', l: stats.pekerjaan.irt.l, p: stats.pekerjaan.irt.p, j: stats.pekerjaan.irt.j, lVal: stats.pekerjaan.irt.l, pVal: stats.pekerjaan.irt.p, jVal: stats.pekerjaan.irt.j },
+                    { label: '13. Wiraswasta / Lainnya', l: stats.pekerjaan.swasta.l, p: stats.pekerjaan.swasta.p, j: stats.pekerjaan.swasta.j, lVal: stats.pekerjaan.swasta.l, pVal: stats.pekerjaan.swasta.p, jVal: stats.pekerjaan.swasta.j },
+                    { label: 'Jumlah Total Penduduk', l: stats.totL, p: stats.totP, j: stats.totJ, lVal: 0, pVal: 0, jVal: 0, bold: true }
+                  ]} showTotal={false} />
 
-                <Table4 num="V." title="AGAMA / ALIRAN KEPERCAYAAN" headers={['AGAMA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '1. Islam', l: stats.agama.islam.l, p: stats.agama.islam.p, j: stats.agama.islam.j, lVal: stats.agama.islam.l, pVal: stats.agama.islam.p, jVal: stats.agama.islam.j },
-                  { label: '2. Kristen', l: stats.agama.kristen.l, p: stats.agama.kristen.p, j: stats.agama.kristen.j, lVal: stats.agama.kristen.l, pVal: stats.agama.kristen.p, jVal: stats.agama.kristen.j },
-                  { label: '3. Katholik', l: stats.agama.katolik.l, p: stats.agama.katolik.p, j: stats.agama.katolik.j, lVal: stats.agama.katolik.l, pVal: stats.agama.katolik.p, jVal: stats.agama.katolik.j },
-                  { label: '4. Hindu', l: stats.agama.hindu.l, p: stats.agama.hindu.p, j: stats.agama.hindu.j, lVal: stats.agama.hindu.l, pVal: stats.agama.hindu.p, jVal: stats.agama.hindu.j },
-                  { label: '5. Budha', l: stats.agama.budha.l, p: stats.agama.budha.p, j: stats.agama.budha.j, lVal: stats.agama.budha.l, pVal: stats.agama.budha.p, jVal: stats.agama.budha.j },
-                  { label: '6. Khonghucu', l: stats.agama.khonghucu.l, p: stats.agama.khonghucu.p, j: stats.agama.khonghucu.j, lVal: stats.agama.khonghucu.l, pVal: stats.agama.khonghucu.p, jVal: stats.agama.khonghucu.j },
-                  { label: '7. Aliran Kepercayaan', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 }
-                ]} showTotal={true} />
+                  <Table4 num="V." title="AGAMA / ALIRAN KEPERCAYAAN" headers={['AGAMA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '1. Islam', l: stats.agama.islam.l, p: stats.agama.islam.p, j: stats.agama.islam.j, lVal: stats.agama.islam.l, pVal: stats.agama.islam.p, jVal: stats.agama.islam.j },
+                    { label: '2. Kristen', l: stats.agama.kristen.l, p: stats.agama.kristen.p, j: stats.agama.kristen.j, lVal: stats.agama.kristen.l, pVal: stats.agama.kristen.p, jVal: stats.agama.kristen.j },
+                    { label: '3. Katholik', l: stats.agama.katolik.l, p: stats.agama.katolik.p, j: stats.agama.katolik.j, lVal: stats.agama.katolik.l, pVal: stats.agama.katolik.p, jVal: stats.agama.katolik.j },
+                    { label: '4. Hindu', l: stats.agama.hindu.l, p: stats.agama.hindu.p, j: stats.agama.hindu.j, lVal: stats.agama.hindu.l, pVal: stats.agama.hindu.p, jVal: stats.agama.hindu.j },
+                    { label: '5. Budha', l: stats.agama.budha.l, p: stats.agama.budha.p, j: stats.agama.budha.j, lVal: stats.agama.budha.l, pVal: stats.agama.budha.p, jVal: stats.agama.budha.j },
+                    { label: '6. Khonghucu', l: stats.agama.khonghucu.l, p: stats.agama.khonghucu.p, j: stats.agama.khonghucu.j, lVal: stats.agama.khonghucu.l, pVal: stats.agama.khonghucu.p, jVal: stats.agama.khonghucu.j },
+                    { label: '7. Aliran Kepercayaan', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 }
+                  ]} showTotal={true} />
 
-                <Table4 num="VI." title="KEWARGANEGARAAN" headers={['KEWARGANEGARAAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '1. Warga Negara Indonesia', l: stats.totL, p: stats.totP, j: stats.totJ, lVal: stats.totL, pVal: stats.totP, jVal: stats.totJ },
-                  { label: '2. Warga Negara Asing', l: <EditNum val={manual.kewarganegaraanWNA.l} onChange={v=>updateArrObj('kewarganegaraanWNA', 0, 'l', v)} />, p: <EditNum val={manual.kewarganegaraanWNA.p} onChange={v=>updateArrObj('kewarganegaraanWNA', 0, 'p', v)} />, j: manual.kewarganegaraanWNA.l+manual.kewarganegaraanWNA.p, lVal: manual.kewarganegaraanWNA.l, pVal: manual.kewarganegaraanWNA.p },
-                  { label: '3. Dwi Kewarganegaraan', l: <EditNum val={manual.kewarganegaraanDwi.l} onChange={v=>updateArrObj('kewarganegaraanDwi', 0, 'l', v)} />, p: <EditNum val={manual.kewarganegaraanDwi.p} onChange={v=>updateArrObj('kewarganegaraanDwi', 0, 'p', v)} />, j: manual.kewarganegaraanDwi.l+manual.kewarganegaraanDwi.p, lVal: manual.kewarganegaraanDwi.l, pVal: manual.kewarganegaraanDwi.p }
-                ]} showTotal={true} />
+                  {/* BUG WNA DI SINI TELAH DIPERBAIKI (updateObjProp dipanggil di onChange) */}
+                  <Table4 num="VI." title="KEWARGANEGARAAN" headers={['KEWARGANEGARAAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '1. Warga Negara Indonesia', l: stats.totL, p: stats.totP, j: stats.totJ, lVal: stats.totL, pVal: stats.totP, jVal: stats.totJ },
+                    { label: '2. Warga Negara Asing', l: <EditNum val={manual.kewarganegaraanWNA.l} onChange={v=>updateObjProp('kewarganegaraanWNA', 'l', v)} />, p: <EditNum val={manual.kewarganegaraanWNA.p} onChange={v=>updateObjProp('kewarganegaraanWNA', 'p', v)} />, j: manual.kewarganegaraanWNA.l+manual.kewarganegaraanWNA.p, lVal: manual.kewarganegaraanWNA.l, pVal: manual.kewarganegaraanWNA.p },
+                    { label: '3. Dwi Kewarganegaraan', l: <EditNum val={manual.kewarganegaraanDwi.l} onChange={v=>updateObjProp('kewarganegaraanDwi', 'l', v)} />, p: <EditNum val={manual.kewarganegaraanDwi.p} onChange={v=>updateObjProp('kewarganegaraanDwi', 'p', v)} />, j: manual.kewarganegaraanDwi.l+manual.kewarganegaraanDwi.p, lVal: manual.kewarganegaraanDwi.l, pVal: manual.kewarganegaraanDwi.p }
+                  ]} showTotal={true} />
+                </div>
 
                 {/* =========== BREAK 2: SETELAH TOTAL KEWARGANEGARAAN =========== */}
                 <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
                 {/* --- HALAMAN 3 --- */}
 
-                <Table4 num="VII." title="ETNIS" headers={['ETNIS', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrEtnis.map((nama, idx) => ({
-                  label: `${idx + 1}. ${nama}`,
-                  l: <EditNum val={manual.etnis[idx].l} onChange={v=>updateArrObj('etnis', idx, 'l', v)} />,
-                  p: <EditNum val={manual.etnis[idx].p} onChange={v=>updateArrObj('etnis', idx, 'p', v)} />,
-                  j: manual.etnis[idx].l + manual.etnis[idx].p,
-                  lVal: manual.etnis[idx].l, pVal: manual.etnis[idx].p
-                }))} showTotal={true} />
+                <div className="print-page pt-4 print:pt-0">
+                  <Table4 num="VII." title="ETNIS" headers={['ETNIS', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrEtnis.map((nama, idx) => ({
+                    label: `${idx + 1}. ${nama}`,
+                    l: stats.etnis[idx].l,
+                    p: stats.etnis[idx].p,
+                    j: stats.etnis[idx].j,
+                    lVal: stats.etnis[idx].l, pVal: stats.etnis[idx].p, jVal: stats.etnis[idx].j
+                  }))} showTotal={true} />
 
-                <Table4 num="VIII." title="CACAT MENTAL DAN FISIK" headers={['JENIS CACAT FISIK', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrFisik.map((nama, idx) => ({
-                  label: `${idx + 1}. ${nama}`, l: <EditNum val={manual.cacatFisik[idx].l} onChange={v=>updateArrObj('cacatFisik', idx, 'l', v)} />, p: <EditNum val={manual.cacatFisik[idx].p} onChange={v=>updateArrObj('cacatFisik', idx, 'p', v)} />, j: manual.cacatFisik[idx].l + manual.cacatFisik[idx].p, lVal: manual.cacatFisik[idx].l, pVal: manual.cacatFisik[idx].p
-                }))} showTotal={true} />
-                
-                <Table4 num="" title="" headers={['JENIS CACAT MENTAL', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrMental.map((nama, idx) => ({
-                  label: `${idx + 1}. ${nama}`, l: <EditNum val={manual.cacatMental[idx].l} onChange={v=>updateArrObj('cacatMental', idx, 'l', v)} />, p: <EditNum val={manual.cacatMental[idx].p} onChange={v=>updateArrObj('cacatMental', idx, 'p', v)} />, j: manual.cacatMental[idx].l + manual.cacatMental[idx].p, lVal: manual.cacatMental[idx].l, pVal: manual.cacatMental[idx].p
-                }))} showTotal={true} />
+                  <Table4 num="VIII." title="CACAT MENTAL DAN FISIK" headers={['JENIS CACAT FISIK', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrFisik.map((nama, idx) => ({
+                    label: `${idx + 1}. ${nama}`, l: <EditNum val={manual.cacatFisik[idx].l} onChange={v=>updateArrObj('cacatFisik', idx, 'l', v)} />, p: <EditNum val={manual.cacatFisik[idx].p} onChange={v=>updateArrObj('cacatFisik', idx, 'p', v)} />, j: manual.cacatFisik[idx].l + manual.cacatFisik[idx].p, lVal: manual.cacatFisik[idx].l, pVal: manual.cacatFisik[idx].p
+                  }))} showTotal={true} />
+                  
+                  <Table4 num="" title="" headers={['JENIS CACAT MENTAL', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrMental.map((nama, idx) => ({
+                    label: `${idx + 1}. ${nama}`, l: <EditNum val={manual.cacatMental[idx].l} onChange={v=>updateArrObj('cacatMental', idx, 'l', v)} />, p: <EditNum val={manual.cacatMental[idx].p} onChange={v=>updateArrObj('cacatMental', idx, 'p', v)} />, j: manual.cacatMental[idx].l + manual.cacatMental[idx].p, lVal: manual.cacatMental[idx].l, pVal: manual.cacatMental[idx].p
+                  }))} showTotal={true} />
+                </div>
 
                 {/* =========== BREAK 3: SETELAH CACAT MENTAL =========== */}
                 <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
                 {/* --- HALAMAN 4 --- */}
 
-                <Table4 num="IX." title="TENAGA KERJA" headers={['TENAGA KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '1. Penduduk Usia 0 - 6 Tahun', l: stats.tk.u0_6.l, p: stats.tk.u0_6.p, j: stats.tk.u0_6.j, lVal: stats.tk.u0_6.l, pVal: stats.tk.u0_6.p, jVal: stats.tk.u0_6.j },
-                  { label: '2. Penduduk Usia 7 - 18 tahun', l: stats.tk.u7_18.l, p: stats.tk.u7_18.p, j: stats.tk.u7_18.j, lVal: stats.tk.u7_18.l, pVal: stats.tk.u7_18.p, jVal: stats.tk.u7_18.j },
-                  { label: '3. Penduduk Usia 19 - 56 tahun (a+b)', l: stats.tk.u19_56.l, p: stats.tk.u19_56.p, j: stats.tk.u19_56.j, lVal: stats.tk.u19_56.l, pVal: stats.tk.u19_56.p, jVal: stats.tk.u19_56.j },
-                  { label: '   a. Usia 19 - 56 tahun yang bekerja', l: stats.tk.u19_56_kerja.l, p: stats.tk.u19_56_kerja.p, j: stats.tk.u19_56_kerja.j, lVal: 0, pVal: 0, jVal: 0, isSub: true },
-                  { label: '   b. Usia 19 - 56 thn belum / tidak bekerja', l: stats.tk.u19_56_belum.l, p: stats.tk.u19_56_belum.p, j: stats.tk.u19_56_belum.j, lVal: 0, pVal: 0, jVal: 0, isSub: true },
-                  { label: '4. Penduduk usia 56 tahun keatas', l: stats.tk.u57_plus.l, p: stats.tk.u57_plus.p, j: stats.tk.u57_plus.j, lVal: stats.tk.u57_plus.l, pVal: stats.tk.u57_plus.p, jVal: stats.tk.u57_plus.j }
-                ]} showTotal={true} />
+                <div className="print-page pt-4 print:pt-0">
+                  <Table4 num="IX." title="TENAGA KERJA" headers={['TENAGA KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '1. Penduduk Usia 0 - 6 Tahun', l: stats.tk.u0_6.l, p: stats.tk.u0_6.p, j: stats.tk.u0_6.j, lVal: stats.tk.u0_6.l, pVal: stats.tk.u0_6.p, jVal: stats.tk.u0_6.j },
+                    { label: '2. Penduduk Usia 7 - 18 tahun', l: stats.tk.u7_18.l, p: stats.tk.u7_18.p, j: stats.tk.u7_18.j, lVal: stats.tk.u7_18.l, pVal: stats.tk.u7_18.p, jVal: stats.tk.u7_18.j },
+                    { label: '3. Penduduk Usia 19 - 56 tahun (a+b)', l: stats.tk.u19_56.l, p: stats.tk.u19_56.p, j: stats.tk.u19_56.j, lVal: stats.tk.u19_56.l, pVal: stats.tk.u19_56.p, jVal: stats.tk.u19_56.j },
+                    { label: '   a. Usia 19 - 56 tahun yang bekerja', l: stats.tk.u19_56_kerja.l, p: stats.tk.u19_56_kerja.p, j: stats.tk.u19_56_kerja.j, lVal: 0, pVal: 0, jVal: 0, isSub: true },
+                    { label: '   b. Usia 19 - 56 thn belum / tidak bekerja', l: stats.tk.u19_56_belum.l, p: stats.tk.u19_56_belum.p, j: stats.tk.u19_56_belum.j, lVal: 0, pVal: 0, jVal: 0, isSub: true },
+                    { label: '4. Penduduk usia 56 tahun keatas', l: stats.tk.u57_plus.l, p: stats.tk.u57_plus.p, j: stats.tk.u57_plus.j, lVal: stats.tk.u57_plus.l, pVal: stats.tk.u57_plus.p, jVal: stats.tk.u57_plus.j }
+                  ]} showTotal={true} />
 
-                <Table4 num="X." title="KUALITAS ANGKATAN KERJA" headers={['ANGKATAN KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
-                  { label: '1. Penduduk usia 19-56 tahun tidak tamat SD', l: stats.ak.tidak_sd.l, p: stats.ak.tidak_sd.p, j: stats.ak.tidak_sd.j, lVal: stats.ak.tidak_sd.l, pVal: stats.ak.tidak_sd.p, jVal: stats.ak.tidak_sd.j },
-                  { label: '2. Penduduk usia 19-56 tahun tamat SD', l: stats.ak.sd.l, p: stats.ak.sd.p, j: stats.ak.sd.j, lVal: stats.ak.sd.l, pVal: stats.ak.sd.p, jVal: stats.ak.sd.j },
-                  { label: '3. Penduduk usia 19-56 tahun tamat SLTP', l: stats.ak.smp.l, p: stats.ak.smp.p, j: stats.ak.smp.j, lVal: stats.ak.smp.l, pVal: stats.ak.smp.p, jVal: stats.ak.smp.j },
-                  { label: '4. Penduduk usia 19-56 tahun tamat SLTA', l: stats.ak.sma.l, p: stats.ak.sma.p, j: stats.ak.sma.j, lVal: stats.ak.sma.l, pVal: stats.ak.sma.p, jVal: stats.ak.sma.j },
-                  { label: '5. Penduduk usia 19-56 thn tamat Perguruan Tinggi', l: stats.ak.pt.l, p: stats.ak.pt.p, j: stats.ak.pt.j, lVal: stats.ak.pt.l, pVal: stats.ak.pt.p, jVal: stats.ak.pt.j }
-                ]} showTotal={true} />
+                  <Table4 num="X." title="KUALITAS ANGKATAN KERJA" headers={['ANGKATAN KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                    { label: '1. Penduduk usia 19-56 tahun tidak tamat SD', l: stats.ak.tidak_sd.l, p: stats.ak.tidak_sd.p, j: stats.ak.tidak_sd.j, lVal: stats.ak.tidak_sd.l, pVal: stats.ak.tidak_sd.p, jVal: stats.ak.tidak_sd.j },
+                    { label: '2. Penduduk usia 19-56 tahun tamat SD', l: stats.ak.sd.l, p: stats.ak.sd.p, j: stats.ak.sd.j, lVal: stats.ak.sd.l, pVal: stats.ak.sd.p, jVal: stats.ak.sd.j },
+                    { label: '3. Penduduk usia 19-56 tahun tamat SLTP', l: stats.ak.smp.l, p: stats.ak.smp.p, j: stats.ak.smp.j, lVal: stats.ak.smp.l, pVal: stats.ak.smp.p, jVal: stats.ak.smp.j },
+                    { label: '4. Penduduk usia 19-56 tahun tamat SLTA', l: stats.ak.sma.l, p: stats.ak.sma.p, j: stats.ak.sma.j, lVal: stats.ak.sma.l, pVal: stats.ak.sma.p, jVal: stats.ak.sma.j },
+                    { label: '5. Penduduk usia 19-56 thn tamat Perguruan Tinggi', l: stats.ak.pt.l, p: stats.ak.pt.p, j: stats.ak.pt.j, lVal: stats.ak.pt.l, pVal: stats.ak.pt.p, jVal: stats.ak.pt.j }
+                  ]} showTotal={true} />
 
-                <Table2 num="XI." title="PRASARANA PERIBADATAN" headers={['JENIS PRASARANA', 'JUMLAH (BUAH)']} rows={arrIbadah.map((nama, idx) => ({
-                  label: nama, val: <EditNum val={manual.ibadah[idx]} onChange={v=>updateArr('ibadah', idx, v)} />
-                }))} />
+                  <Table2 num="XI." title="PRASARANA PERIBADATAN" headers={['JENIS PRASARANA', 'JUMLAH (BUAH)']} rows={arrIbadah.map((nama, idx) => ({
+                    label: nama, val: <EditNum val={manual.ibadah[idx]} onChange={v=>updateArr('ibadah', idx, v)} />
+                  }))} />
 
-                <Table2 num="XII." title="PRASARANA OLAHRAGA" headers={['JENIS PRASARANA', 'JUMLAH (BUAH)']} rows={arrOlahraga.map((nama, idx) => ({
-                  label: nama, val: <EditNum val={manual.olahraga[idx]} onChange={v=>updateArr('olahraga', idx, v)} />
-                }))} />
+                  <Table2 num="XII." title="PRASARANA OLAHRAGA" headers={['JENIS PRASARANA', 'JUMLAH (BUAH)']} rows={arrOlahraga.map((nama, idx) => ({
+                    label: nama, val: <EditNum val={manual.olahraga[idx]} onChange={v=>updateArr('olahraga', idx, v)} />
+                  }))} />
+                </div>
 
                 {/* =========== BREAK 4: SETELAH PRASARANA OLAHRAGA =========== */}
                 <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
                 {/* --- HALAMAN 5 --- */}
 
-                <Table2 num="XIII." title="PRASARANA DAN SARANA KESEHATAN" headers={['JENIS PRASARANA KESEHATAN', 'JUMLAH (UNIT)']} rows={arrKes1.map((nama, idx) => ({
-                  label: nama, val: <EditNum val={manual.kesehatanPrasarana[idx]} onChange={v=>updateArr('kesehatanPrasarana', idx, v)} />
-                }))} />
-                <Table2 num="" title="" headers={['JENIS SARANA KESEHATAN', 'JUMLAH (ORANG)']} rows={arrKes2.map((nama, idx) => ({
-                  label: nama, val: <EditNum val={manual.kesehatanSarana[idx]} onChange={v=>updateArr('kesehatanSarana', idx, v)} />
-                }))} />
+                <div className="print-page pt-4 print:pt-0">
+                  <Table2 num="XIII." title="PRASARANA DAN SARANA KESEHATAN" headers={['JENIS PRASARANA KESEHATAN', 'JUMLAH (UNIT)']} rows={arrKes1.map((nama, idx) => ({
+                    label: nama, val: <EditNum val={manual.kesehatanPrasarana[idx]} onChange={v=>updateArr('kesehatanPrasarana', idx, v)} />
+                  }))} />
+                  <Table2 num="" title="" headers={['JENIS SARANA KESEHATAN', 'JUMLAH (ORANG)']} rows={arrKes2.map((nama, idx) => ({
+                    label: nama, val: <EditNum val={manual.kesehatanSarana[idx]} onChange={v=>updateArr('kesehatanSarana', idx, v)} />
+                  }))} />
 
-                <Table4 num="XIV." title="PRASARANA PENDIDIKAN" headers={['JENIS', 'SEWA (BUAH)', 'MILIK SENDIRI (BUAH)']} rows={arrPend.map((nama, idx) => ({
-                  label: `${idx+1}. ${nama}`,
-                  l: <EditNum val={manual.pendidikanSewa[idx]} onChange={v=>updateArr('pendidikanSewa', idx, v)} />,
-                  p: <EditNum val={manual.pendidikanMilik[idx]} onChange={v=>updateArr('pendidikanMilik', idx, v)} />,
-                  j: Number(manual.pendidikanSewa[idx] || 0) + Number(manual.pendidikanMilik[idx] || 0),
-                  lVal: manual.pendidikanSewa[idx], pVal: manual.pendidikanMilik[idx]
-                }))} showTotal={false} />
+                  <Table4 num="XIV." title="PRASARANA PENDIDIKAN" headers={['JENIS', 'SEWA (BUAH)', 'MILIK SENDIRI (BUAH)']} rows={arrPend.map((nama, idx) => ({
+                    label: `${idx+1}. ${nama}`,
+                    l: <EditNum val={manual.pendidikanSewa[idx]} onChange={v=>updateArr('pendidikanSewa', idx, v)} />,
+                    p: <EditNum val={manual.pendidikanMilik[idx]} onChange={v=>updateArr('pendidikanMilik', idx, v)} />,
+                    j: Number(manual.pendidikanSewa[idx] || 0) + Number(manual.pendidikanMilik[idx] || 0),
+                    lVal: manual.pendidikanSewa[idx], pVal: manual.pendidikanMilik[idx]
+                  }))} showTotal={false} />
+                </div>
 
                 {/* =========== BREAK 5: SETELAH PRASARANA PENDIDIKAN =========== */}
                 <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
                 {/* --- HALAMAN 6 --- */}
 
-                <Table2 num="XV." title="PRASARANA ENERGI DAN PENERANGAN" headers={['JENIS', 'JUMLAH (KELUARGA)']} rows={arrEnergi.map((nama, idx) => ({
-                  label: `${idx+1}. ${nama}`, val: <EditNum val={manual.energi[idx]} onChange={v=>updateArr('energi', idx, v)} />
-                }))} />
+                <div className="print-page pt-4 print:pt-0">
+                  <Table2 num="XV." title="PRASARANA ENERGI DAN PENERANGAN" headers={['JENIS', 'JUMLAH (KELUARGA)']} rows={arrEnergi.map((nama, idx) => ({
+                    label: `${idx+1}. ${nama}`, val: <EditNum val={manual.energi[idx]} onChange={v=>updateArr('energi', idx, v)} />
+                  }))} />
 
-                <Table2 num="XVI." title="PRASARANA HIBURAN DAN WISATA" headers={['JENIS', 'JUMLAH (BUAH)']} rows={arrHiburan.map((nama, idx) => ({
-                  label: `${idx+1}. ${nama}`, val: <EditNum val={manual.hiburan[idx]} onChange={v=>updateArr('hiburan', idx, v)} />
-                }))} />
+                  <Table2 num="XVI." title="PRASARANA HIBURAN DAN WISATA" headers={['JENIS', 'JUMLAH (BUAH)']} rows={arrHiburan.map((nama, idx) => ({
+                    label: `${idx+1}. ${nama}`, val: <EditNum val={manual.hiburan[idx]} onChange={v=>updateArr('hiburan', idx, v)} />
+                  }))} />
 
-                <Table2 num="XVII." title="PRASARANA DAN SARANA KEBERSIHAN" headers={['JENIS', 'JUMLAH / STATUS']} rows={arrBersih.map((nama, idx) => ({
-                  label: `${idx+1}. ${nama}`, val: <EditText val={manual.kebersihan[idx]} onChange={v=>updateArr('kebersihan', idx, v)} />
-                }))} />
+                  <Table2 num="XVII." title="PRASARANA DAN SARANA KEBERSIHAN" headers={['JENIS', 'JUMLAH / STATUS']} rows={arrBersih.map((nama, idx) => ({
+                    label: `${idx+1}. ${nama}`, val: <EditText val={manual.kebersihan[idx]} onChange={v=>updateArr('kebersihan', idx, v)} />
+                  }))} />
 
-                {/* TANDA TANGAN YANG SUDAH DIPADATKAN MARGINNYA */}
-                <div className="mt-8 print:mt-2 flex justify-end w-full break-inside-avoid">
-                  <div className="text-center w-64 uppercase font-bold text-[10pt] print:text-[9pt] pt-2">
-                    <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1]}</p>
-                    <p className="mb-16 print:mb-10">Ketua RT.16 RW.04</p>
-                    <p className="underline underline-offset-4 decoration-2">{manual.nama_rt}</p>
+                  {/* TANDA TANGAN TRIWULAN (Gambar TTD menggores nama) */}
+                  <div className="mt-8 print:mt-2 flex justify-end w-full break-inside-avoid">
+                    <div className="text-center w-64 uppercase font-bold text-[10pt] print:text-[9pt] pt-2">
+                      <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1]}</p>
+                      <p className="mb-6 print:mb-4">Ketua RT.16 RW.04</p>
+                      <div className="relative inline-block w-full">
+                        <img src="/ttd-guntur.png" alt="Tanda Tangan" className="absolute left-1/2 -top-14 transform -translate-x-1/2 w-50 h-auto z-10 pointer-events-none opacity-90 mix-blend-multiply" />
+                        <p className="relative z-0 underline underline-offset-4 decoration-2 mt-8">{manual.nama_rt}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

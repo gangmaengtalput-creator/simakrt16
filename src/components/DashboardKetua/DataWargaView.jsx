@@ -2,6 +2,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
+// --- Konstanta Label Etnis (Sama dengan Laporan Triwulan) ---
+const arrEtnis = ['Aceh','Batak','Nias','Jawa','Banten','Cirebon','Betawi','Sunda','Bali','Ambon','Flores','Papua','Samawa','Melayu/Palembang','Minangkabau','Afrika','Australia','China','Amerika','Eropa','Arab','Lainnya'];
+
 export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) {
   // ==========================================
   // 1. STATE LOKAL KHUSUS WARGA
@@ -17,12 +20,35 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const [selectedWarga, setSelectedWarga] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // State Khusus Dropdown Etnis
+  const [showEtnisLainnya, setShowEtnisLainnya] = useState(false);
+
   // State Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // State Data Profiles (Untuk mengambil No. HP)
+  const [profilesMap, setProfilesMap] = useState({});
+
   // ==========================================
-  // 2. LOGIKA STATISTIK DEMOGRAFI
+  // 2. FETCH PROFILES UNTUK NO HP
+  // ==========================================
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      const { data, error } = await supabase.from('profiles').select('nik, no_hp');
+      if (data && !error) {
+        const pMap = {};
+        data.forEach(p => {
+          if (p.nik && p.no_hp) pMap[p.nik] = p.no_hp;
+        });
+        setProfilesMap(pMap);
+      }
+    };
+    fetchProfiles();
+  }, []);
+
+  // ==========================================
+  // 3. LOGIKA STATISTIK DEMOGRAFI
   // ==========================================
   const calculateAge = (dob) => {
     if (!dob) return 0;
@@ -54,10 +80,9 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   }, [dataWarga]);
 
   // ==========================================
-  // 3. LOGIKA FILTER, PENGURUTAN HIERARKI & PAGINATION
+  // 4. LOGIKA FILTER, PENGURUTAN HIERARKI & PAGINATION
   // ==========================================
   const dataTerproses = useMemo(() => {
-    // A. Bobot Urutan Status Keluarga
     const bobotStatus = {
       'KEPALA KELUARGA': 1, 'SUAMI': 2, 'ISTRI': 3, 'ANAK': 4,
       'MENANTU': 5, 'CUCU': 6, 'ORANG TUA': 7, 'MERTUA': 8,
@@ -65,7 +90,6 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     };
     const getBobot = (status) => bobotStatus[status?.toUpperCase()] || 99;
 
-    // B. Filter Data
     let filtered = dataWarga.filter(w => {
       if (!w) return false;
       const isMatchTab = tabWarga === 'aktif' ? w.status_warga !== 'mantan' : w.status_warga === 'mantan';
@@ -88,9 +112,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       return isMatchTab && isMatchSearch && isMatchAge;
     });
 
-    // C. Pengurutan (Sorting) No KK dan Hierarki
     filtered.sort((a, b) => {
-      // FIX: Paksa tipe datanya menjadi String agar tidak crash saat diurutkan
       const kkA = a.no_kk ? String(a.no_kk) : '';
       const kkB = b.no_kk ? String(b.no_kk) : '';
       
@@ -101,20 +123,28 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     return filtered;
   }, [dataWarga, tabWarga, searchQuery, ageFilter]);
 
-  // Kalkulasi Pagination
   const totalPages = Math.ceil(dataTerproses.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const dataHalamanIni = dataTerproses.slice(startIndex, startIndex + itemsPerPage);
 
-  // Reset ke halaman 1 jika filter berubah
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, itemsPerPage, tabWarga, ageFilter]);
 
   // ==========================================
-  // 4. FUNGSI CRUD WARGA
+  // 5. FUNGSI CRUD WARGA
   // ==========================================
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleEtnisChange = (e) => {
+    if (e.target.value === 'Lainnya') {
+      setShowEtnisLainnya(true);
+      setFormData({ ...formData, etnis: '' });
+    } else {
+      setShowEtnisLainnya(false);
+      setFormData({ ...formData, etnis: e.target.value });
+    }
+  };
 
   const saveAdd = async (e) => {
     e.preventDefault(); setIsProcessing(true);
@@ -140,36 +170,32 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   };
 
   const openView = (warga) => { setSelectedWarga(warga); setShowModal({ ...showModal, view: true }); };
-  const openEdit = (warga) => { setSelectedWarga(warga); setFormData(warga); setShowModal({ ...showModal, edit: true }); };
   const openDelete = (warga) => { setSelectedWarga(warga); setDeleteReason(''); setShowModal({ ...showModal, delete: true }); };
 
-  // KOMPONEN FORM INPUT
-  const FormInputs = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1 text-sm">
-      <div><label className="font-semibold">No. KK</label><input required name="no_kk" value={formData?.no_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div><label className="font-semibold">NIK</label><input required name="nik" value={formData?.nik || ''} onChange={handleInputChange} disabled={showModal.edit} className="w-full border p-2 rounded bg-gray-50 focus:ring-blue-500" /></div>
-      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Nama Lengkap</label><input required name="nama" value={formData?.nama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div><label className="font-semibold">Jenis Kelamin</label>
-        <select required name="jenis_kelamin" value={formData?.jenis_kelamin || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500">
-          <option value="">Pilih...</option><option value="LAKI-LAKI">Laki-laki</option><option value="PEREMPUAN">Perempuan</option>
-        </select>
-      </div>
-      <div><label className="font-semibold">Agama</label><input required name="agama" value={formData?.agama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div><label className="font-semibold">Tempat Lahir</label><input required name="tempat_lahir" value={formData?.tempat_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div><label className="font-semibold">Tanggal Lahir</label><input required type="date" name="tgl_lahir" value={formData?.tgl_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div><label className="font-semibold">Status KK</label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div><label className="font-semibold">Pendidikan</label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
-      <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Alamat Lengkap</label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" rows="2"></textarea></div>
-    </div>
-  );
+  const openAdd = () => { 
+    setFormData({}); 
+    setShowEtnisLainnya(false); 
+    setShowModal({ ...showModal, add: true }); 
+  };
+
+  const openEdit = (warga) => { 
+    setSelectedWarga(warga); 
+    
+    // Gabungkan no_hp dari profiles jika di master_warga kosong
+    const existingHp = warga.no_hp || profilesMap[warga.nik] || '';
+    setFormData({ ...warga, no_hp: existingHp }); 
+
+    // Cek apakah etnis warga ada di database tapi tidak ada di list arrEtnis bawaan (berarti custom)
+    setShowEtnisLainnya(warga.etnis && !arrEtnis.slice(0, -1).includes(warga.etnis));
+    setShowModal({ ...showModal, edit: true }); 
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 print:hidden">
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <button onClick={() => setActiveView('menu')} className="text-sm text-blue-600 font-bold hover:underline bg-blue-50 px-4 py-2 rounded-lg">&larr; Kembali ke Menu Utama</button>
-        <button onClick={() => { setFormData({}); setShowModal({...showModal, add: true}); }} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 w-full sm:w-auto transition">+ Tambah Data Warga</button>
+        <button onClick={openAdd} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 w-full sm:w-auto transition">+ Tambah Data Warga</button>
       </div>
 
       {/* STATISTIK KARTU */}
@@ -220,13 +246,14 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       {/* TABEL DATA WARGA */}
       <div className="bg-white rounded-xl shadow-md border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap text-sm min-w-[900px]">
+          <table className="w-full text-left border-collapse whitespace-nowrap text-sm min-w-[1000px]">
             <thead>
               <tr className="bg-gray-100 text-gray-700 border-b-2">
                 <th className="py-3 px-4 font-bold">NIK / No. KK</th>
                 <th className="py-3 px-4 font-bold">Nama Lengkap</th>
                 <th className="py-3 px-4 font-bold text-center">L/P</th>
                 <th className="py-3 px-4 font-bold">Umur</th>
+                <th className="py-3 px-4 font-bold">No. HP</th>
                 <th className="py-3 px-4 font-bold">Pekerjaan</th>
                 <th className="py-3 px-4 font-bold text-center">Aksi</th>
               </tr>
@@ -235,6 +262,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
               {dataHalamanIni.map((warga, index) => {
                 // Garis pembatas tebal antar beda KK
                 const isNewKK = index > 0 && String(warga.no_kk) !== String(dataHalamanIni[index - 1].no_kk);
+                const displayHp = warga.no_hp || profilesMap[warga.nik] || '-';
 
                 return (
                   <tr key={warga.id || warga.nik} className={`hover:bg-blue-50 transition-colors ${isNewKK ? 'border-t-4 border-t-gray-300' : ''}`}>
@@ -253,6 +281,9 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                     </td>
                     <td className="py-3 px-4 font-medium text-gray-700">
                       {calculateAge(warga.tgl_lahir)} Thn
+                    </td>
+                    <td className="py-3 px-4 font-mono text-gray-700 text-xs">
+                      {displayHp}
                     </td>
                     <td className="py-3 px-4 text-gray-600 text-xs uppercase">
                       {warga.pekerjaan || '-'}
@@ -273,7 +304,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
               })}
               {dataHalamanIni.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-gray-500 italic">
+                  <td colSpan="7" className="py-8 text-center text-gray-500 italic">
                     Data warga tidak ditemukan.
                   </td>
                 </tr>
@@ -364,7 +395,9 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                     <div><p className="text-[10px] text-gray-500 uppercase font-bold">Usia</p><p className="font-bold text-blue-600">{calculateAge(selectedWarga.tgl_lahir)} Tahun</p></div>
                     <div><p className="text-[10px] text-gray-500 uppercase font-bold">Jenis Kelamin</p><p className="font-bold text-gray-800">{selectedWarga.jenis_kelamin || '-'}</p></div>
                     <div><p className="text-[10px] text-gray-500 uppercase font-bold">Agama</p><p className="font-bold text-gray-800">{selectedWarga.agama || '-'}</p></div>
+                    <div><p className="text-[10px] text-gray-500 uppercase font-bold">Etnis / Suku</p><p className="font-bold text-gray-800">{selectedWarga.etnis || '-'}</p></div>
                     <div><p className="text-[10px] text-gray-500 uppercase font-bold">Pendidikan</p><p className="font-bold text-gray-800">{selectedWarga.pendidikan || '-'}</p></div>
+                    <div><p className="text-[10px] text-gray-500 uppercase font-bold">No. Handphone</p><p className="font-bold text-gray-800 font-mono">{selectedWarga.no_hp || profilesMap[selectedWarga.nik] || '-'}</p></div>
                     <div className="col-span-2"><p className="text-[10px] text-gray-500 uppercase font-bold">Pekerjaan</p><p className="font-bold text-gray-800">{selectedWarga.pekerjaan || '-'}</p></div>
                   </div>
                 </div>
@@ -396,7 +429,56 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"> 
           <form onSubmit={saveAdd} className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]"> 
             <div className="bg-blue-600 p-4"><h3 className="text-lg font-bold text-white">Tambah Warga Baru</h3></div> 
-            <div className="p-6 overflow-y-auto"><FormInputs /></div> 
+            
+            {/* INLINE FORM INPUTS AGAR TIDAK KEHILANGAN FOKUS SAAT MENGETIK */}
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div><label className="font-semibold">No. KK</label><input required name="no_kk" value={formData?.no_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div><label className="font-semibold">NIK</label><input required name="nik" value={formData?.nik || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Nama Lengkap</label><input required name="nama" value={formData?.nama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                <div>
+                  <label className="font-semibold">Jenis Kelamin</label>
+                  <select required name="jenis_kelamin" value={formData?.jenis_kelamin || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500">
+                    <option value="">Pilih...</option><option value="LAKI-LAKI">Laki-laki</option><option value="PEREMPUAN">Perempuan</option>
+                  </select>
+                </div>
+                <div><label className="font-semibold">Agama</label><input required name="agama" value={formData?.agama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                {/* KONTROL ETNIS */}
+                <div>
+                  <label className="font-semibold">Etnis / Suku</label>
+                  <select 
+                    value={showEtnisLainnya ? 'Lainnya' : (formData?.etnis || '')} 
+                    onChange={handleEtnisChange}
+                    className="w-full border p-2 rounded focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Pilih Etnis...</option>
+                    {arrEtnis.map(e => <option key={e} value={e}>{e}</option>)}
+                  </select>
+                  {showEtnisLainnya && (
+                    <input type="text" name="etnis" placeholder="Ketik nama etnis..." value={formData?.etnis || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500 mt-2" required />
+                  )}
+                </div>
+                
+                {/* NO HP */}
+                <div>
+                  <label className="font-semibold">No. Handphone (Opsional)</label>
+                  <input type="tel" name="no_hp" value={formData?.no_hp || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" placeholder="Contoh: 08123456789" />
+                </div>
+
+                <div><label className="font-semibold">Tempat Lahir</label><input required name="tempat_lahir" value={formData?.tempat_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div><label className="font-semibold">Tanggal Lahir</label><input required type="date" name="tgl_lahir" value={formData?.tgl_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                <div><label className="font-semibold">Status KK</label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div><label className="font-semibold">Pendidikan</label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Alamat Lengkap</label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" rows="2"></textarea></div>
+              </div>
+            </div> 
+            
             <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
               <button type="button" onClick={() => setShowModal({...showModal, add: false})} className="px-4 py-2 bg-gray-200 rounded font-bold text-sm">Batal</button>
               <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow-md">{isProcessing ? 'Menyimpan...' : 'Simpan Data'}</button>
@@ -410,7 +492,56 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"> 
           <form onSubmit={saveEdit} className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh]"> 
             <div className="bg-yellow-500 p-4"><h3 className="text-lg font-bold text-white">Edit Data Warga</h3></div> 
-            <div className="p-6 overflow-y-auto"><FormInputs /></div> 
+            
+            {/* INLINE FORM INPUTS AGAR TIDAK KEHILANGAN FOKUS SAAT MENGETIK */}
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div><label className="font-semibold">No. KK</label><input required name="no_kk" value={formData?.no_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div><label className="font-semibold">NIK</label><input required name="nik" value={formData?.nik || ''} onChange={handleInputChange} disabled className="w-full border p-2 rounded bg-gray-50 focus:ring-blue-500 cursor-not-allowed" /></div>
+                <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Nama Lengkap</label><input required name="nama" value={formData?.nama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                <div>
+                  <label className="font-semibold">Jenis Kelamin</label>
+                  <select required name="jenis_kelamin" value={formData?.jenis_kelamin || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500">
+                    <option value="">Pilih...</option><option value="LAKI-LAKI">Laki-laki</option><option value="PEREMPUAN">Perempuan</option>
+                  </select>
+                </div>
+                <div><label className="font-semibold">Agama</label><input required name="agama" value={formData?.agama || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                {/* KONTROL ETNIS */}
+                <div>
+                  <label className="font-semibold">Etnis / Suku</label>
+                  <select 
+                    value={showEtnisLainnya ? 'Lainnya' : (formData?.etnis || '')} 
+                    onChange={handleEtnisChange}
+                    className="w-full border p-2 rounded focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Pilih Etnis...</option>
+                    {arrEtnis.map(e => <option key={e} value={e}>{e}</option>)}
+                  </select>
+                  {showEtnisLainnya && (
+                    <input type="text" name="etnis" placeholder="Ketik nama etnis..." value={formData?.etnis || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500 mt-2" required />
+                  )}
+                </div>
+                
+                {/* NO HP */}
+                <div>
+                  <label className="font-semibold">No. Handphone (Opsional)</label>
+                  <input type="tel" name="no_hp" value={formData?.no_hp || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" placeholder="Contoh: 08123456789" />
+                </div>
+
+                <div><label className="font-semibold">Tempat Lahir</label><input required name="tempat_lahir" value={formData?.tempat_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div><label className="font-semibold">Tanggal Lahir</label><input required type="date" name="tgl_lahir" value={formData?.tgl_lahir || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                <div><label className="font-semibold">Status KK</label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div><label className="font-semibold">Pendidikan</label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                
+                <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" /></div>
+                <div className="col-span-1 sm:col-span-2"><label className="font-semibold">Alamat Lengkap</label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border p-2 rounded focus:ring-blue-500" rows="2"></textarea></div>
+              </div>
+            </div> 
+
             <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
               <button type="button" onClick={() => setShowModal({...showModal, edit: false})} className="px-4 py-2 bg-gray-200 rounded font-bold text-sm">Batal</button>
               <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-yellow-600 text-white rounded font-bold text-sm shadow-md">{isProcessing ? 'Memperbarui...' : 'Update Data'}</button>
