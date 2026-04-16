@@ -94,18 +94,14 @@ export default function LaporanView({ setActiveView }) {
     const cPek = (kunci) => fmtLPJ(aktif.filter(w => String(w.pekerjaan).toUpperCase().includes(kunci)));
     const cAgama = (kunci) => fmtLPJ(aktif.filter(w => String(w.agama).toUpperCase().includes(kunci)));
 
-    // TENAGA KERJA (Tidak Double Count)
+    // TENAGA KERJA (TIDAK DOUBLE COUNT)
     const tk_0_6 = cUmur(0, 6);
     const tk_7_18 = cUmur(7, 18);
     const tk_7_18_sekolah = fmtLPJ(aktif.filter(w => hitungUmur(w.tgl_lahir) >= 7 && hitungUmur(w.tgl_lahir) <= 18 && String(w.pekerjaan).toUpperCase().includes('PELAJAR')));
-    
     const p19_56 = aktif.filter(w => hitungUmur(w.tgl_lahir) >= 19 && hitungUmur(w.tgl_lahir) <= 56);
     const tk_19_56 = fmtLPJ(p19_56);
-    // Pekerja usia 19-56
     const tk_19_56_kerja = fmtLPJ(p19_56.filter(w => !String(w.pekerjaan).toUpperCase().match(/(BELUM|TIDAK BEKERJA|PELAJAR|MAHASISWA|MENGURUS RUMAH)/)));
-    // Belum kerja / Mengurus rumah usia 19-56
     const tk_19_56_belum = fmtLPJ(p19_56.filter(w => String(w.pekerjaan).toUpperCase().match(/(BELUM|TIDAK BEKERJA|PELAJAR|MAHASISWA|MENGURUS RUMAH)/)));
-    
     const tk_57_plus = cUmur(57, 999);
 
     // KUALITAS ANGKATAN KERJA
@@ -168,7 +164,7 @@ export default function LaporanView({ setActiveView }) {
     csv += row(['NAMA KETUA RT','','',':', manual.nama_rt]);
     csv += row(['JABATAN','','',':', 'KETUA RT 16']);
     csv += row(['ALAMAT','','',':', 'JL KAPTEN ROBANI KADIR LRG MAENG NO 06 RT 016 RW 004']);
-    csv += row(['KELURAHAN','','',':', 'TALANGPUTRI']);
+    csv += row(['KELURAHAN','','',':', 'TALANG PUTRI']);
     csv += row(['KECAMATAN','','',':', 'PLAJU']);
     csv += row([]);
     
@@ -278,8 +274,8 @@ export default function LaporanView({ setActiveView }) {
     csv += row(['1','Penduduk Usia 0 - 6 Tahun','','', stats.tk.u0_6.l, stats.tk.u0_6.p, stats.tk.u0_6.j]);
     csv += row(['2','Penduduk Usia 7 - 18 tahun','','', stats.tk.u7_18.l, stats.tk.u7_18.p, stats.tk.u7_18.j]);
     csv += row(['3','Penduduk Usia 19 - 56 tahun (a+b)','','', stats.tk.u19_56.l, stats.tk.u19_56.p, stats.tk.u19_56.j]);
-    csv += row(['','a. Penduduk usia 19 - 56 tahun yang bekerja','','', stats.tk.u19_56_kerja.l, stats.tk.u19_56_kerja.p, stats.tk.u19_56_kerja.j]);
-    csv += row(['','b. Penduduk usia 19 -56 tahun belum / tidak bekerja','','', stats.tk.u19_56_belum.l, stats.tk.u19_56_belum.p, stats.tk.u19_56_belum.j]);
+    csv += row(['','a. Usia 19 - 56 tahun yang bekerja','','', stats.tk.u19_56_kerja.l, stats.tk.u19_56_kerja.p, stats.tk.u19_56_kerja.j]);
+    csv += row(['','b. Usia 19 - 56 thn belum / tidak bekerja','','', stats.tk.u19_56_belum.l, stats.tk.u19_56_belum.p, stats.tk.u19_56_belum.j]);
     csv += row(['4','Penduduk usia 56 tahun keatas','','', stats.tk.u57_plus.l, stats.tk.u57_plus.p, stats.tk.u57_plus.j]);
     csv += row(['','JUMLAH TOTAL PENDUDUK','','', stats.totL, stats.totP, stats.totJ]);
     csv += row([]);
@@ -290,7 +286,7 @@ export default function LaporanView({ setActiveView }) {
     csv += row(['2','Penduduk usia 19-56 tahun tamat SD','','', stats.ak.sd.l, stats.ak.sd.p, stats.ak.sd.j]);
     csv += row(['3','Penduduk usia 19-56 tahun tamat SLTP','','', stats.ak.smp.l, stats.ak.smp.p, stats.ak.smp.j]);
     csv += row(['4','Penduduk usia 19-56 tahun tamat SLTA','','', stats.ak.sma.l, stats.ak.sma.p, stats.ak.sma.j]);
-    csv += row(['5','Penduduk usia 19-56 tahun tamat Perguruan Tinggi','','', stats.ak.pt.l, stats.ak.pt.p, stats.ak.pt.j]);
+    csv += row(['5','Penduduk usia 19-56 thn tamat Perguruan Tinggi','','', stats.ak.pt.l, stats.ak.pt.p, stats.ak.pt.j]);
     csv += row(['','JUMLAH ANGKATAN KERJA USIA 19-56','','', stats.tk.u19_56.l, stats.tk.u19_56.p, stats.tk.u19_56.j]);
     csv += row([]);
 
@@ -354,12 +350,11 @@ export default function LaporanView({ setActiveView }) {
   // ==========================================
   const EditNum = ({ val, onChange }) => <input type="number" value={val||0} onChange={e=>onChange(e.target.value)} className="w-full text-center bg-yellow-100 outline-none print:bg-transparent print:appearance-none focus:ring-1 focus:ring-blue-500 font-medium" />;
   const EditText = ({ val, onChange }) => <input type="text" value={val||''} onChange={e=>onChange(e.target.value)} className="w-full text-center bg-yellow-100 outline-none print:bg-transparent focus:ring-1 focus:ring-blue-500 px-1 font-medium" />;
-  const SectionTitle = ({ children }) => <h4 className="font-bold border-b-2 border-black mt-4 mb-2 uppercase text-[8pt] print:text-[7pt] break-inside-avoid">{children}</h4>;
 
   const Table4 = ({ num, title, headers, rows, showTotal = true }) => (
-    <div className="mb-4 break-inside-avoid">
-      <div className="flex font-bold uppercase mb-1 print:text-[9pt]"><div className="w-8">{num}</div><div>{title}</div></div>
-      <table className="w-full border-collapse border border-black text-[9pt] print:text-[8.5pt]">
+    <div className="mb-4 print:mb-1">
+      <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">{num}</div><div>{title}</div></div>
+      <table className="w-full border-collapse border border-black text-[9pt] print:text-[8pt]">
         <thead>
           <tr className="font-bold text-center bg-gray-100">
             <th className="border border-black p-1 text-left pl-2">{headers[0]}</th>
@@ -391,9 +386,9 @@ export default function LaporanView({ setActiveView }) {
   );
 
   const Table2 = ({ num, title, headers, rows }) => (
-    <div className="mb-4 break-inside-avoid">
-      <div className="flex font-bold uppercase mb-1 print:text-[9pt]"><div className="w-8">{num}</div><div>{title}</div></div>
-      <table className="w-full border-collapse border border-black text-[9pt] print:text-[8.5pt]">
+    <div className="mb-4 print:mb-1">
+      <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">{num}</div><div>{title}</div></div>
+      <table className="w-full border-collapse border border-black text-[9pt] print:text-[8pt]">
         <thead>
           <tr className="font-bold text-center bg-gray-100">
             <th className="border border-black p-1 w-10">NO</th>
@@ -438,30 +433,33 @@ export default function LaporanView({ setActiveView }) {
       {/* LAPORAN DATA DASAR KELUARGA (FIT LANDSCAPE)*/}
       {/* ========================================== */}
       {subView === 'data_dasar' && (
-        <div className="space-y-6 data-dasar-view">
-          <div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between print:hidden">
-            <select value={periodeDataDasar} onChange={e=>setPeriodeDataDasar(e.target.value)} className="border p-2 rounded text-sm font-bold w-64 bg-gray-50 outline-none focus:ring-blue-500">
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-col sm:flex-row justify-between gap-4 print:hidden">
+            <select value={periodeDataDasar} onChange={e=>setPeriodeDataDasar(e.target.value)} className="border p-2 rounded text-sm font-bold w-full sm:w-64 bg-gray-50 outline-none focus:ring-blue-500">
               <option value={`JANUARI - MARET ${tahunSekarang}`}>JANUARI - MARET {tahunSekarang}</option>
               <option value={`APRIL - JUNI ${tahunSekarang}`}>APRIL - JUNI {tahunSekarang}</option>
               <option value={`JULI - SEPTEMBER ${tahunSekarang}`}>JULI - SEPTEMBER {tahunSekarang}</option>
               <option value={`OKTOBER - DESEMBER ${tahunSekarang}`}>OKTOBER - DESEMBER {tahunSekarang}</option>
             </select>
-            <div className="flex gap-2">
-              <button onClick={exportDataDasarExcel} className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-700">📊 Export ke Excel</button>
-              <button onClick={() => window.print()} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700">🖨️ Cetak PDF</button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button onClick={exportDataDasarExcel} className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-700 w-full sm:w-auto text-center">📊 Export ke Excel</button>
+              <button onClick={() => window.print()} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 w-full sm:w-auto text-center">🖨️ Cetak PDF</button>
             </div>
           </div>
           
           <div className="bg-white p-8 shadow-sm border print:p-0 print:border-none print:shadow-none print-container">
              <div className="w-full">
-                <div className="mb-4 uppercase font-bold text-sm text-center relative break-inside-avoid">
-                  <img src="/logo-palembang.png" alt="Logo Palembang" className="absolute left-0 top-0 w-16 h-16 object-contain" />
-                  <h1 className="text-xl font-black underline mb-4 tracking-wider">LAPORAN DATA DASAR KELUARGA</h1>
-                  <div className="grid grid-cols-[100px_10px_1fr] gap-y-0.5 w-72 mx-auto text-left">
-                    <span>Kecamatan</span><span>:</span><span>Plaju</span>
-                    <span>Kelurahan</span><span>:</span><span>Talangputri</span>
-                    <span>RT / RW</span><span>:</span><span>016 / 004</span>
-                    <span>Periode</span><span>:</span><span>{periodeDataDasar}</span>
+                
+                <div className="mb-6 break-inside-avoid">
+                  <h1 className="text-xl font-black underline tracking-wider text-center mb-6 uppercase">LAPORAN DATA DASAR KELUARGA</h1>
+                  <div className="flex items-center justify-start gap-8 ml-2">
+                    <img src="/logo-palembang.png" alt="Logo Palembang" className="w-24 h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
+                    <div className="grid grid-cols-[90px_10px_1fr] gap-y-1 text-left uppercase font-bold text-[9pt] print:text-[10pt]">
+                      <span>Kecamatan</span><span>:</span><span>Plaju</span>
+                      <span>Kelurahan</span><span>:</span><span>Talangputri</span>
+                      <span>RT / RW</span><span>:</span><span>016 / 004</span>
+                      <span>Periode</span><span>:</span><span>{periodeDataDasar}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -506,7 +504,7 @@ export default function LaporanView({ setActiveView }) {
                   <div className="text-center w-64 uppercase font-bold print:text-[8pt]">
                     <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1] || new Date().toLocaleDateString('id-ID')}</p>
                     <p className="mb-16">Ketua RT.16 RW.04</p>
-                    <p className="underline underline-offset-2">GUNTUR BAYU JANTORO, S.Pd</p>
+                    <p className="underline underline-offset-2">GUNTUR BAYU JANTORO</p>
                   </div>
                 </div>
               </div>
@@ -518,39 +516,39 @@ export default function LaporanView({ setActiveView }) {
       {/* LAPORAN TRIWULAN (FORMAT EXCEL PORTRAIT)   */}
       {/* ========================================== */}
       {subView === 'triwulan' && (
-        <div className="space-y-6 triwulan-view">
-          <div className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center print:hidden">
-             <div className="flex gap-2">
-                <select value={manual.bulan} onChange={e=>updateManual('bulan', e.target.value)} className="border p-2 rounded text-xs font-bold w-48 bg-gray-50 outline-none focus:ring-emerald-500 cursor-pointer">
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row justify-between items-center gap-4 print:hidden">
+             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <select value={manual.bulan} onChange={e=>updateManual('bulan', e.target.value)} className="border p-2 rounded text-xs font-bold w-full sm:w-48 bg-gray-50 outline-none focus:ring-emerald-500 cursor-pointer">
                   <option value="JANUARI - MARET">JANUARI - MARET</option>
                   <option value="APRIL - JUNI">APRIL - JUNI</option>
                   <option value="JULI - SEPTEMBER">JULI - SEPTEMBER</option>
                   <option value="OKTOBER - DESEMBER">OKTOBER - DESEMBER</option>
                 </select>
-                <div className="border p-2 rounded text-xs font-bold w-24 bg-gray-200 text-gray-500 cursor-not-allowed flex items-center justify-center">{manual.tahun}</div>
+                <div className="border p-2 rounded text-xs font-bold w-full sm:w-24 bg-gray-200 text-gray-500 cursor-not-allowed flex items-center justify-center">{manual.tahun}</div>
              </div>
-             <div className="flex gap-4 items-center">
-                <button onClick={exportTriwulanExcel} className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-700">📊 Export ke Excel</button>
-                <button onClick={() => window.print()} className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-emerald-700">🖨️ Cetak PDF</button>
+             <div className="flex flex-col sm:flex-row gap-2 items-center w-full md:w-auto">
+                <button onClick={exportTriwulanExcel} className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-700 w-full sm:w-auto text-center">📊 Export ke Excel</button>
+                <button onClick={() => window.print()} className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-emerald-700 w-full sm:w-auto text-center">🖨️ Cetak PDF</button>
              </div>
           </div>
 
           <div className="bg-white p-10 shadow-sm border print:p-0 print:shadow-none print:border-none">
             {isLoading ? <p className="text-center py-10 font-bold">Memuat...</p> : (
-              <div className="w-full text-[10pt] print:text-[9.5pt] leading-tight text-black font-sans print-container">
+              <div className="w-full text-[10pt] print:text-[8pt] leading-tight text-black font-sans print-container">
                 
-                {/* KOP LAPORAN */}
-                <div className="flex flex-col items-center justify-center mb-6 pb-4 border-b-2 border-black break-inside-avoid">
+                {/* --- HALAMAN 1 --- */}
+                <div className="flex flex-col items-center justify-center mb-4 pb-2 border-b-2 border-black break-inside-avoid">
                   <div className="flex items-center gap-6 w-full justify-center">
-                    <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 object-contain" />
+                    <img src="/logo-palembang.png" alt="Logo" className="w-20 h-20 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
                     <div className="text-center uppercase tracking-wide">
-                      <h2 className="text-xl font-bold leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
-                      <h1 className="text-2xl font-black leading-tight">LAPORAN TRIWULAN KETUA RT</h1>
+                      <h2 className="text-xl font-bold leading-tight print:text-[14pt]">PEMERINTAH KOTA PALEMBANG</h2>
+                      <h1 className="text-2xl font-black leading-tight print:text-[16pt]">LAPORAN TRIWULAN KETUA RT</h1>
                     </div>
                   </div>
                 </div>
 
-                <div className="mb-6 uppercase font-bold text-[10pt] print:text-[9pt] break-inside-avoid">
+                <div className="mb-4 uppercase font-bold text-[10pt] print:text-[8pt] break-inside-avoid">
                   <table className="w-full border-collapse">
                     <tbody>
                       <tr><td className="w-64 pb-1">HARI / TANGGAL LAPORAN</td><td className="w-4 pb-1">:</td><td className="pb-1 text-blue-800 print:text-black">{tanggalLaporanOtomatis}</td></tr>
@@ -559,15 +557,15 @@ export default function LaporanView({ setActiveView }) {
                       <tr><td className="pb-1">NAMA KETUA RT</td><td className="pb-1">:</td><td className="pb-1">{manual.nama_rt}</td></tr>
                       <tr><td className="pb-1">JABATAN</td><td className="pb-1">:</td><td className="pb-1">KETUA RT 16</td></tr>
                       <tr><td className="pb-1">ALAMAT</td><td className="pb-1">:</td><td className="pb-1">JL KAPTEN ROBANI KADIR LRG MAENG NO 06 RT 016 RW 004</td></tr>
-                      <tr><td className="pb-1">KELURAHAN</td><td className="pb-1">:</td><td className="pb-1">TALANGPUTRI</td></tr>
+                      <tr><td className="pb-1">KELURAHAN</td><td className="pb-1">:</td><td className="pb-1">TALANG PUTRI</td></tr>
                       <tr><td className="pb-1">KECAMATAN</td><td className="pb-1">:</td><td className="pb-1">PLAJU</td></tr>
                     </tbody>
                   </table>
                 </div>
 
                 <div className="mb-4 break-inside-avoid">
-                  <div className="flex font-bold uppercase mb-1 print:text-[9pt]"><div className="w-8">I.</div><div>BATAS WILAYAH RT</div></div>
-                  <table className="w-full pl-8 mb-4 border-collapse"><tbody>
+                  <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">I.</div><div>BATAS WILAYAH RT</div></div>
+                  <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
                     <tr><td className="w-8">a</td><td className="w-32">UTARA</td><td className="w-2">:</td><td className="w-32 font-bold"><EditText val={manual.batasUtara} onChange={v=>updateManual('batasUtara',v)} /></td><td></td></tr>
                     <tr><td>b</td><td>SELATAN</td><td>:</td><td className="font-bold"><EditText val={manual.batasSelatan} onChange={v=>updateManual('batasSelatan',v)} /></td><td></td></tr>
                     <tr><td>c</td><td>TIMUR</td><td>:</td><td className="font-bold"><EditText val={manual.batasTimur} onChange={v=>updateManual('batasTimur',v)} /></td><td></td></tr>
@@ -576,8 +574,8 @@ export default function LaporanView({ setActiveView }) {
                 </div>
 
                 <div className="mb-4 break-inside-avoid">
-                  <div className="flex font-bold uppercase mb-1 print:text-[9pt]"><div className="w-8">II.</div><div>DATA PENDUDUK</div></div>
-                  <table className="w-full pl-8 mb-4 border-collapse"><tbody>
+                  <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">II.</div><div>DATA PENDUDUK</div></div>
+                  <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
                     <tr><td className="w-8 pb-1">a</td><td className="w-64">JUMLAH PENDUDUK</td><td className="w-2">:</td><td className="w-20 text-center font-bold bg-gray-100">{stats.totJ}</td><td>ORANG</td></tr>
                     <tr><td className="pb-1">b</td><td>JUMLAH PENDUDUK LAKI-LAKI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totL}</td><td>ORANG</td></tr>
                     <tr><td className="pb-1">c</td><td>JUMLAH PENDUDUK PEREMPUAN</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totP}</td><td>ORANG</td></tr>
@@ -590,8 +588,8 @@ export default function LaporanView({ setActiveView }) {
                 </div>
 
                 <div className="mb-4 break-inside-avoid">
-                  <div className="flex font-bold uppercase mb-1 print:text-[9pt]"><div className="w-8">III.</div><div>DATA KELOMPOK UMUR</div></div>
-                  <table className="w-full pl-8 mb-4 border-collapse"><tbody>
+                  <div className="flex font-bold uppercase mb-1 print:text-[8pt]"><div className="w-8">III.</div><div>DATA KELOMPOK UMUR</div></div>
+                  <table className="w-full pl-8 mb-4 border-collapse print:text-[8pt]"><tbody>
                     <tr><td className="w-8 pb-1">a</td><td className="w-64">USIA 0 - 5 TAHUN</td><td className="w-2">:</td><td className="w-20 text-center bg-gray-50">{stats.umur.u0_5.j}</td><td>ORANG</td></tr>
                     <tr><td className="pb-1">b</td><td>USIA 6 - 10 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u6_10.j}</td><td>ORANG</td></tr>
                     <tr><td className="pb-1">c</td><td>USIA 11 - 17 TAHUN</td><td>:</td><td className="text-center bg-gray-50">{stats.umur.u11_17.j}</td><td>ORANG</td></tr>
@@ -616,7 +614,14 @@ export default function LaporanView({ setActiveView }) {
                   { label: '12. Tamat D-1 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
                   { label: '13. Tamat D-2 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
                   { label: '14. Tamat D-3 / sederajat', l: stats.pendidikan.d.l, p: stats.pendidikan.d.p, j: stats.pendidikan.d.j, lVal: stats.pendidikan.d.l, pVal: stats.pendidikan.d.p, jVal: stats.pendidikan.d.j },
-                  { label: '15. Tamat S-1 / sederajat', l: stats.pendidikan.s1.l, p: stats.pendidikan.s1.p, j: stats.pendidikan.s1.j, lVal: stats.pendidikan.s1.l, pVal: stats.pendidikan.s1.p, jVal: stats.pendidikan.s1.j },
+                  { label: '15. Tamat S-1 / sederajat', l: stats.pendidikan.s1.l, p: stats.pendidikan.s1.p, j: stats.pendidikan.s1.j, lVal: stats.pendidikan.s1.l, pVal: stats.pendidikan.s1.p, jVal: stats.pendidikan.s1.j }
+                ]} showTotal={false} />
+
+                {/* =========== BREAK 1: SETELAH S-1 =========== */}
+                <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
+                {/* --- HALAMAN 2 --- */}
+
+                <Table4 num="" title="(Lanjutan) DATA PENDIDIKAN" headers={['TINGKAT PENDIDIKAN', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
                   { label: '16. Tamat S-2 / sederajat', l: stats.pendidikan.s23.l, p: stats.pendidikan.s23.p, j: stats.pendidikan.s23.j, lVal: stats.pendidikan.s23.l, pVal: stats.pendidikan.s23.p, jVal: stats.pendidikan.s23.j },
                   { label: '17. Tamat S-3 / sederajat', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
                   { label: '18. Tamat SLB A', l: 0, p: 0, j: 0, lVal: 0, pVal: 0, jVal: 0 },
@@ -658,6 +663,10 @@ export default function LaporanView({ setActiveView }) {
                   { label: '3. Dwi Kewarganegaraan', l: <EditNum val={manual.kewarganegaraanDwi.l} onChange={v=>updateArrObj('kewarganegaraanDwi', 0, 'l', v)} />, p: <EditNum val={manual.kewarganegaraanDwi.p} onChange={v=>updateArrObj('kewarganegaraanDwi', 0, 'p', v)} />, j: manual.kewarganegaraanDwi.l+manual.kewarganegaraanDwi.p, lVal: manual.kewarganegaraanDwi.l, pVal: manual.kewarganegaraanDwi.p }
                 ]} showTotal={true} />
 
+                {/* =========== BREAK 2: SETELAH TOTAL KEWARGANEGARAAN =========== */}
+                <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
+                {/* --- HALAMAN 3 --- */}
+
                 <Table4 num="VII." title="ETNIS" headers={['ETNIS', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={arrEtnis.map((nama, idx) => ({
                   label: `${idx + 1}. ${nama}`,
                   l: <EditNum val={manual.etnis[idx].l} onChange={v=>updateArrObj('etnis', idx, 'l', v)} />,
@@ -674,7 +683,10 @@ export default function LaporanView({ setActiveView }) {
                   label: `${idx + 1}. ${nama}`, l: <EditNum val={manual.cacatMental[idx].l} onChange={v=>updateArrObj('cacatMental', idx, 'l', v)} />, p: <EditNum val={manual.cacatMental[idx].p} onChange={v=>updateArrObj('cacatMental', idx, 'p', v)} />, j: manual.cacatMental[idx].l + manual.cacatMental[idx].p, lVal: manual.cacatMental[idx].l, pVal: manual.cacatMental[idx].p
                 }))} showTotal={true} />
 
-                {/* PERBAIKAN TENAGA KERJA - Sub items (a dan b) tidak dihitung dalam sum(lVal) menggunakan lVal:0 */}
+                {/* =========== BREAK 3: SETELAH CACAT MENTAL =========== */}
+                <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
+                {/* --- HALAMAN 4 --- */}
+
                 <Table4 num="IX." title="TENAGA KERJA" headers={['TENAGA KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
                   { label: '1. Penduduk Usia 0 - 6 Tahun', l: stats.tk.u0_6.l, p: stats.tk.u0_6.p, j: stats.tk.u0_6.j, lVal: stats.tk.u0_6.l, pVal: stats.tk.u0_6.p, jVal: stats.tk.u0_6.j },
                   { label: '2. Penduduk Usia 7 - 18 tahun', l: stats.tk.u7_18.l, p: stats.tk.u7_18.p, j: stats.tk.u7_18.j, lVal: stats.tk.u7_18.l, pVal: stats.tk.u7_18.p, jVal: stats.tk.u7_18.j },
@@ -684,7 +696,7 @@ export default function LaporanView({ setActiveView }) {
                   { label: '4. Penduduk usia 56 tahun keatas', l: stats.tk.u57_plus.l, p: stats.tk.u57_plus.p, j: stats.tk.u57_plus.j, lVal: stats.tk.u57_plus.l, pVal: stats.tk.u57_plus.p, jVal: stats.tk.u57_plus.j }
                 ]} showTotal={true} />
 
-                <Table4 num="X." title="KUALITAS ANGKATAN KERJA (Usia 19-56 tahun)" headers={['ANGKATAN KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
+                <Table4 num="X." title="KUALITAS ANGKATAN KERJA" headers={['ANGKATAN KERJA', 'LAKI-LAKI (ORANG)', 'PEREMPUAN (ORANG)']} rows={[
                   { label: '1. Penduduk usia 19-56 tahun tidak tamat SD', l: stats.ak.tidak_sd.l, p: stats.ak.tidak_sd.p, j: stats.ak.tidak_sd.j, lVal: stats.ak.tidak_sd.l, pVal: stats.ak.tidak_sd.p, jVal: stats.ak.tidak_sd.j },
                   { label: '2. Penduduk usia 19-56 tahun tamat SD', l: stats.ak.sd.l, p: stats.ak.sd.p, j: stats.ak.sd.j, lVal: stats.ak.sd.l, pVal: stats.ak.sd.p, jVal: stats.ak.sd.j },
                   { label: '3. Penduduk usia 19-56 tahun tamat SLTP', l: stats.ak.smp.l, p: stats.ak.smp.p, j: stats.ak.smp.j, lVal: stats.ak.smp.l, pVal: stats.ak.smp.p, jVal: stats.ak.smp.j },
@@ -699,6 +711,10 @@ export default function LaporanView({ setActiveView }) {
                 <Table2 num="XII." title="PRASARANA OLAHRAGA" headers={['JENIS PRASARANA', 'JUMLAH (BUAH)']} rows={arrOlahraga.map((nama, idx) => ({
                   label: nama, val: <EditNum val={manual.olahraga[idx]} onChange={v=>updateArr('olahraga', idx, v)} />
                 }))} />
+
+                {/* =========== BREAK 4: SETELAH PRASARANA OLAHRAGA =========== */}
+                <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
+                {/* --- HALAMAN 5 --- */}
 
                 <Table2 num="XIII." title="PRASARANA DAN SARANA KESEHATAN" headers={['JENIS PRASARANA KESEHATAN', 'JUMLAH (UNIT)']} rows={arrKes1.map((nama, idx) => ({
                   label: nama, val: <EditNum val={manual.kesehatanPrasarana[idx]} onChange={v=>updateArr('kesehatanPrasarana', idx, v)} />
@@ -715,6 +731,10 @@ export default function LaporanView({ setActiveView }) {
                   lVal: manual.pendidikanSewa[idx], pVal: manual.pendidikanMilik[idx]
                 }))} showTotal={false} />
 
+                {/* =========== BREAK 5: SETELAH PRASARANA PENDIDIKAN =========== */}
+                <div style={{ pageBreakAfter: 'always' }} className="print:block hidden"></div>
+                {/* --- HALAMAN 6 --- */}
+
                 <Table2 num="XV." title="PRASARANA ENERGI DAN PENERANGAN" headers={['JENIS', 'JUMLAH (KELUARGA)']} rows={arrEnergi.map((nama, idx) => ({
                   label: `${idx+1}. ${nama}`, val: <EditNum val={manual.energi[idx]} onChange={v=>updateArr('energi', idx, v)} />
                 }))} />
@@ -727,12 +747,12 @@ export default function LaporanView({ setActiveView }) {
                   label: `${idx+1}. ${nama}`, val: <EditText val={manual.kebersihan[idx]} onChange={v=>updateArr('kebersihan', idx, v)} />
                 }))} />
 
-                {/* TANDA TANGAN */}
-                <div className="mt-12 flex justify-end break-inside-avoid w-full pb-10">
-                  <div className="text-center w-64 uppercase font-bold text-[10pt] print:text-[9pt] pt-4">
+                {/* TANDA TANGAN YANG SUDAH DIPADATKAN MARGINNYA */}
+                <div className="mt-8 print:mt-2 flex justify-end w-full break-inside-avoid">
+                  <div className="text-center w-64 uppercase font-bold text-[10pt] print:text-[9pt] pt-2">
                     <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1]}</p>
-                    <p className="mb-20">Ketua RT.16 RW.04</p>
-                    <p className="underline underline-offset-4 decoration-2">{manual.nama_rt}, S.Pd</p>
+                    <p className="mb-16 print:mb-10">Ketua RT.16 RW.04</p>
+                    <p className="underline underline-offset-4 decoration-2">{manual.nama_rt}</p>
                   </div>
                 </div>
 
@@ -751,7 +771,7 @@ export default function LaporanView({ setActiveView }) {
         @media print {
           @page { 
             size: ${subView === 'data_dasar' ? 'A4 landscape' : 'A4 portrait'} !important; 
-            margin: ${subView === 'data_dasar' ? '10mm' : '15mm'}; 
+            margin: ${subView === 'data_dasar' ? '10mm' : '10mm 15mm 10mm 15mm'}; 
           }
           .max-w-7xl { max-width: 100% !important; margin: 0 !important; }
           .print-container { width: 100%; display: block; }

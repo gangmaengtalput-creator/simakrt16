@@ -1,5 +1,5 @@
 // File: src/components/DashboardKetua/MainMenu.jsx
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function MainMenu({
   totalSaldoAllTime,
@@ -11,6 +11,9 @@ export default function MainMenu({
   fetchRiwayatIuran,
   setActiveView
 }) {
+  // State untuk mengontrol tampilan sub-menu
+  const [subMenu, setSubMenu] = useState(null);
+
   // Hitung saldo riil
   const saldoRiil = totalSaldoAllTime - totalPengeluaranAllTime;
 
@@ -29,82 +32,121 @@ export default function MainMenu({
         </div>
       </div>
 
-      {/* GRID MENU UTAMA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {/* TOMBOL KEMBALI (Muncul jika sedang di dalam sub-menu) */}
+      {subMenu === 'keuangan' && (
+        <div className="mb-4 animate-fade-in">
+          <button 
+            onClick={() => setSubMenu(null)} 
+            className="text-sm text-emerald-700 font-bold hover:underline bg-emerald-50 px-4 py-2 rounded-lg transition-all"
+          >
+            &larr; Kembali ke Menu Utama
+          </button>
+        </div>
+      )}
+
+      {/* GRID MENU - Diubah menjadi 3 Kolom agar seimbang */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-fade-in">
         
-        {/* 1. Data Warga */}
-        <button onClick={fetchWarga} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-blue-700 mb-2 flex items-center justify-between">
-            <span>1. Data Warga</span>
-            <span className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Kelola database kependudukan, lihat statistik usia warga, dan mutasi data.</p>
-        </button>
+        {!subMenu && (
+          <>
+            {/* 1. Data Warga */}
+            <button onClick={fetchWarga} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-blue-700 mb-2 flex items-center justify-between">
+                <span>1. Data Warga</span>
+                <span className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Kelola database kependudukan, lihat statistik usia warga, dan mutasi data.</p>
+            </button>
 
-        {/* 2. Kotak Masuk Surat */}
-        <button onClick={fetchPermintaanMasuk} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-orange-600 mb-2 flex items-center justify-between">
-            <span>2. Kotak Masuk Surat</span>
-            <span className="text-gray-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Lihat dan proses permohonan surat pengantar dari dasbor warga.</p>
-        </button>
+            {/* 2. Kotak Masuk Surat */}
+            <button onClick={fetchPermintaanMasuk} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-orange-600 mb-2 flex items-center justify-between">
+                <span>2. Kotak Masuk Surat</span>
+                <span className="text-gray-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Lihat dan proses permohonan surat pengantar dari dasbor warga.</p>
+            </button>
 
-        {/* 3. Buat Surat Manual */}
-        <button onClick={goToBuatSurat} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-green-700 mb-2 flex items-center justify-between">
-            <span>3. Buat Surat Manual</span>
-            <span className="text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Buat nomor surat otomatis dan cetak surat resmi format kelurahan.</p>
-        </button>
+            {/* 3. Buat Surat Manual */}
+            <button onClick={goToBuatSurat} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-green-700 mb-2 flex items-center justify-between">
+                <span>3. Buat Surat Manual</span>
+                <span className="text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Buat nomor surat otomatis dan cetak surat resmi format kelurahan.</p>
+            </button>
 
-        {/* 4. Manajemen Usulan */}
-        <button onClick={fetchUsulan} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-purple-700 mb-2 flex items-center justify-between">
-            <span>4. Manajemen Usulan</span>
-            <span className="text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Tinjau usulan warga, update status proyek, & upload foto tindak lanjut.</p>
-        </button>
+            {/* 4. Manajemen Usulan */}
+            <button onClick={fetchUsulan} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-purple-700 mb-2 flex items-center justify-between">
+                <span>4. Manajemen Usulan</span>
+                <span className="text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Tinjau usulan warga, update status proyek, & upload foto tindak lanjut.</p>
+            </button>
 
-        {/* 5. Pemungutan Iuran */}
-        <button onClick={fetchRiwayatIuran} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-emerald-700 mb-2 flex items-center justify-between">
-            <span>5. Pemungutan Iuran</span>
-            <span className="text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Catat pembayaran kas bulanan warga dan kelola status tagihan KK.</p>
-        </button>
+            {/* 5. Keuangan RT (Membuka Sub-Menu) */}
+            <button onClick={() => setSubMenu('keuangan')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-emerald-700 mb-2 flex items-center justify-between">
+                <span>5. Keuangan RT</span>
+                <span className="text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Kelola Pemungutan Iuran, Pengeluaran Kas, dan Penugasan Bendahara.</p>
+            </button>
 
-        {/* 6. Pengeluaran Kas */}
-        <button onClick={() => setActiveView('pengeluaran_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-rose-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-rose-700 mb-2 flex items-center justify-between">
-            <span>6. Pengeluaran Kas</span>
-            <span className="text-gray-300 group-hover:text-rose-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Catat dan pantau riwayat pengeluaran operasional dan kegiatan RT.</p>
-        </button>
+            {/* 6. Laporan RT */}
+            <button onClick={() => setActiveView('laporan')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-gray-800 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-gray-800 mb-2 flex items-center justify-between">
+                <span>6. Laporan RT</span>
+                <span className="text-gray-300 group-hover:text-gray-800 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Cetak Laporan Triwulan dan Data Dasar Keluarga (Format PDF).</p>
+            </button>
+          </>
+        )}
 
-        {/* 7. Penunjukan Petugas */}
-        <button onClick={() => setActiveView('penunjukan_petugas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-cyan-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-cyan-700 mb-2 flex items-center justify-between">
-            <span>7. Penugasan Petugas</span>
-            <span className="text-gray-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Beri akses pungut kas ke warga tertentu sebagai petugas bendahara.</p>
-        </button>
+        {/* SUB-MENU: KEUANGAN RT */}
+        {subMenu === 'keuangan' && (
+          <>
+            {/* A. Pemungutan Iuran */}
+            <button onClick={fetchRiwayatIuran} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-emerald-700 mb-2 flex items-center justify-between">
+                <span>a. Pemungutan Iuran</span>
+                <span className="text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Catat pembayaran kas bulanan warga dan kelola status tagihan KK.</p>
+            </button>
 
-        {/* 8. Laporan */}
-        <button onClick={() => setActiveView('laporan')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-gray-800 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-          <h3 className="font-bold text-lg text-gray-800 mb-2 flex items-center justify-between">
-            <span>8. Laporan RT</span>
-            <span className="text-gray-300 group-hover:text-gray-800 group-hover:translate-x-1 transition-all">→</span>
-          </h3>
-          <p className="text-sm text-gray-500 leading-relaxed">Cetak Laporan Triwulan dan Data Dasar Keluarga (Format PDF).</p>
-        </button>
+            {/* B. Pengeluaran Kas */}
+            <button onClick={() => setActiveView('pengeluaran_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-rose-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-rose-700 mb-2 flex items-center justify-between">
+                <span>b. Pengeluaran Kas</span>
+                <span className="text-gray-300 group-hover:text-rose-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Catat dan pantau riwayat pengeluaran operasional dan kegiatan RT.</p>
+            </button>
+
+            {/* C. Penunjukan Petugas */}
+            <button onClick={() => setActiveView('penunjukan_petugas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-cyan-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-cyan-700 mb-2 flex items-center justify-between">
+                <span>c. Penugasan Petugas</span>
+                <span className="text-gray-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Beri akses pungut kas ke warga tertentu sebagai petugas bendahara.</p>
+            </button>
+          </>
+        )}
         
       </div>
+      
+      {/* Tambahan class untuk animasi perpindahan menu */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
     </div>
   );
 }
