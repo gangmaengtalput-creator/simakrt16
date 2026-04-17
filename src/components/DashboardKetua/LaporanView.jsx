@@ -84,7 +84,8 @@ const Table2 = ({ num, title, headers, rows }) => (
   </div>
 );
 
-export default function LaporanView({ setActiveView }) {
+// PROPS DIPERBAIKI: Mengembalikan 'dataWarga' yang terhapus
+export default function LaporanView({ setActiveView, dataWarga }) {
   const [subView, setSubView] = useState('menu'); 
   const tahunSekarang = new Date().getFullYear().toString();
   const [periodeDataDasar, setPeriodeDataDasar] = useState(`JANUARI - MARET ${tahunSekarang}`);
@@ -111,7 +112,6 @@ export default function LaporanView({ setActiveView }) {
   const updateManual = (key, val) => setManual(p => ({...p, [key]: val}));
   const updateArrObj = (key, idx, prop, val) => setManual(p => { const arr = [...p[key]]; arr[idx] = {...arr[idx], [prop]: Number(val)||0}; return {...p, [key]: arr}; });
   const updateArr = (key, idx, val) => setManual(p => { const arr = [...p[key]]; arr[idx] = val; return {...p, [key]: arr}; });
-  // PERBAIKAN BUG WNA: Tambah updater untuk objek biasa
   const updateObjProp = (key, prop, val) => setManual(p => ({...p, [key]: {...p[key], [prop]: Number(val)||0}}));
 
   const getTanggalLaporanTriwulan = (periodeBulan, tahun) => {
@@ -130,7 +130,11 @@ export default function LaporanView({ setActiveView }) {
   const [dataWargaLokal, setDataWargaLokal] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => { fetchWargaLokal(); }, []);
+  // Fallback: Jika Parent mengirim dataWarga, pakai. Jika tidak, fetch manual.
+  useEffect(() => { 
+    if (!dataWarga || dataWarga.length === 0) fetchWargaLokal(); 
+  }, [dataWarga]);
+
   const fetchWargaLokal = async () => {
     setIsLoading(true);
     const { data } = await supabase.from('master_warga').select('*');
@@ -138,17 +142,19 @@ export default function LaporanView({ setActiveView }) {
     setIsLoading(false);
   };
 
+  const finalDataWarga = (dataWarga && dataWarga.length > 0) ? dataWarga : dataWargaLokal;
+
   const dataDasarSorted = useMemo(() => {
     const bobot = { 'KEPALA KELUARGA': 1, 'ISTRI': 2, 'ANAK': 3 };
-    return [...dataWargaLokal].filter(w => w.status_warga === 'aktif').sort((a, b) => {
+    return [...finalDataWarga].filter(w => w.status_warga?.toLowerCase() === 'aktif').sort((a, b) => {
       const kkA = a.no_kk ? String(a.no_kk) : ''; const kkB = b.no_kk ? String(b.no_kk) : '';
       if (kkA !== kkB) return kkA.localeCompare(kkB);
       return (bobot[a.status_kk?.toUpperCase()] || 99) - (bobot[b.status_kk?.toUpperCase()] || 99);
     });
-  }, [dataWargaLokal]);
+  }, [finalDataWarga]);
 
   const stats = useMemo(() => {
-    const aktif = dataWargaLokal.filter(w => w.status_warga === 'aktif');
+    const aktif = finalDataWarga.filter(w => w.status_warga?.toLowerCase() === 'aktif');
     const isLaki = w => String(w.jenis_kelamin).toUpperCase().startsWith('L');
     const isPr = w => String(w.jenis_kelamin).toUpperCase().startsWith('P');
     
@@ -192,7 +198,6 @@ export default function LaporanView({ setActiveView }) {
     aktif.forEach(w => {
       if (!w.etnis) return;
       let idx = arrEtnis.findIndex(e => e.toLowerCase() === w.etnis.toLowerCase());
-      // Jika tidak ada di daftar baku, masukkan ke 'Lainnya' (index terakhir)
       if (idx === -1) idx = arrEtnis.length - 1; 
 
       const LakiLaki = String(w.jenis_kelamin).toUpperCase().startsWith('L');
@@ -203,7 +208,7 @@ export default function LaporanView({ setActiveView }) {
     return {
       totL: aktif.filter(isLaki).length, totP: aktif.filter(isPr).length, totJ: aktif.length,
       kk: new Set(aktif.map(w => w.no_kk).filter(Boolean)).size,
-      pindah: dataWargaLokal.filter(w => w.status_warga === 'pindah' || w.status_warga === 'mantan').length,
+      pindah: finalDataWarga.filter(w => w.status_warga?.toLowerCase() === 'pindah' || w.status_warga?.toLowerCase() === 'mantan').length,
       umur: { u0_5: cUmur(0,5), u6_10: cUmur(6,10), u11_17: cUmur(11,17), u18_60: cUmur(18,60), u60p: cUmur(61,999) },
       etnis: etnisStats,
       pendidikan: { 
@@ -223,7 +228,7 @@ export default function LaporanView({ setActiveView }) {
       tk: { u0_6: tk_0_6, u7_18: tk_7_18, u7_18_sekolah: tk_7_18_sekolah, u19_56: tk_19_56, u19_56_kerja: tk_19_56_kerja, u19_56_belum: tk_19_56_belum, u57_plus: tk_57_plus },
       ak: { tidak_sd: ak_tidak, sd: ak_sd, smp: ak_smp, sma: ak_sma, pt: ak_pt }
     };
-  }, [dataWargaLokal]);
+  }, [finalDataWarga]);
 
   // ==========================================
   // EXPORT KE EXCEL (CSV GENERATOR)
@@ -468,71 +473,78 @@ export default function LaporanView({ setActiveView }) {
             </div>
           </div>
           
-          <div className="bg-white p-8 shadow-sm border print:p-0 print:border-none print:shadow-none print-container">
-             <div className="w-full">
-                
-                <div className="mb-6 break-inside-avoid">
-                  <h1 className="text-xl font-black underline tracking-wider text-center mb-6 uppercase">LAPORAN DATA DASAR KELUARGA</h1>
-                  <div className="flex items-center justify-start gap-8 ml-2">
-                    <img src="/logo-palembang.png" alt="Logo Palembang" className="w-24 h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
-                    <div className="grid grid-cols-[90px_10px_1fr] gap-y-1 text-left uppercase font-bold text-[9pt] print:text-[10pt]">
-                      <span>Kecamatan</span><span>:</span><span>Plaju</span>
-                      <span>Kelurahan</span><span>:</span><span>Talangputri</span>
-                      <span>RT / RW</span><span>:</span><span>016 / 004</span>
-                      <span>Periode</span><span>:</span><span>{periodeDataDasar}</span>
+          <div className="bg-white p-4 sm:p-8 shadow-sm border print:p-0 print:border-none print:shadow-none print-container">
+             
+             {/* ---- MODIFIKASI DIMULAI DI SINI: Pembungkus tabel scrollable ---- */}
+             <div className="w-full overflow-x-auto pb-4">
+                <div className="min-w-[1000px] print:min-w-full">
+                  
+                  <div className="mb-6 break-inside-avoid">
+                    <h1 className="text-xl font-black underline tracking-wider text-center mb-6 uppercase">LAPORAN DATA DASAR KELUARGA</h1>
+                    <div className="flex items-center justify-start gap-8 ml-2">
+                      <img src="/logo-palembang.png" alt="Logo Palembang" className="w-24 h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
+                      <div className="grid grid-cols-[90px_10px_1fr] gap-y-1 text-left uppercase font-bold text-[9pt] print:text-[10pt]">
+                        <span>Kecamatan</span><span>:</span><span>Plaju</span>
+                        <span>Kelurahan</span><span>:</span><span>Talangputri</span>
+                        <span>RT / RW</span><span>:</span><span>016 / 004</span>
+                        <span>Periode</span><span>:</span><span>{periodeDataDasar}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <table className="w-full border-collapse border border-black print-table-dasar text-[8.5pt] print:text-[7pt]">
-                  <thead>
-                    <tr className="bg-gray-100 uppercase font-bold text-center">
-                      <th className="border border-black p-1 w-[3%]">No</th>
-                      <th className="border border-black p-1 w-[12%]">No. KK</th>
-                      <th className="border border-black p-1 w-[12%]">NIK</th>
-                      <th className="border border-black p-1 w-[16%]">Nama Lengkap</th>
-                      <th className="border border-black p-1 w-[3%]">L/P</th>
-                      <th className="border border-black p-1 w-[9%]">Tempat Lhr</th>
-                      <th className="border border-black p-1 w-[7%]">Tgl Lahir</th>
-                      <th className="border border-black p-1 w-[6%]">Agama</th>
-                      <th className="border border-black p-1 w-[12%]">Alamat</th>
-                      <th className="border border-black p-1 w-[7%]">Pendidikan</th>
-                      <th className="border border-black p-1 w-[7%]">Pekerjaan</th>
-                      <th className="border border-black p-1 w-[6%]">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dataDasarSorted.map((w, i) => (
-                      <tr key={w.nik || i}>
-                        <td className="border border-black p-1 text-center">{i + 1}</td>
-                        <td className="border border-black p-1 font-mono text-center leading-tight">{w.no_kk || '-'}</td>
-                        <td className="border border-black p-1 font-mono text-center leading-tight">{w.nik || '-'}</td>
-                        <td className="border border-black p-1 uppercase font-medium leading-tight">{w.nama || '-'}</td>
-                        <td className="border border-black p-1 text-center">{String(w.jenis_kelamin).charAt(0)}</td>
-                        <td className="border border-black p-1 uppercase text-center leading-tight">{w.tempat_lahir || '-'}</td>
-                        <td className="border border-black p-1 text-center leading-tight">{w.tgl_lahir ? new Date(w.tgl_lahir).toLocaleDateString('id-ID') : '-'}</td>
-                        <td className="border border-black p-1 uppercase text-center leading-tight">{w.agama || '-'}</td>
-                        <td className="border border-black p-1 uppercase leading-tight print:text-[5.5pt]">{w.alamat || '-'}</td>
-                        <td className="border border-black p-1 uppercase text-center leading-tight">{w.pendidikan || '-'}</td>
-                        <td className="border border-black p-1 uppercase text-center leading-tight">{w.pekerjaan || '-'}</td>
-                        <td className="border border-black p-1 uppercase font-bold text-center leading-tight">{w.status_kk || '-'}</td>
+                  <table className="w-full border-collapse border border-black print-table-dasar text-[8.5pt] print:text-[7pt]">
+                    <thead>
+                      <tr className="bg-gray-100 uppercase font-bold text-center">
+                        <th className="border border-black p-1 w-[3%]">No</th>
+                        <th className="border border-black p-1 w-[12%]">No. KK</th>
+                        <th className="border border-black p-1 w-[12%]">NIK</th>
+                        <th className="border border-black p-1 w-[16%]">Nama Lengkap</th>
+                        <th className="border border-black p-1 w-[3%]">L/P</th>
+                        <th className="border border-black p-1 w-[9%]">Tempat Lhr</th>
+                        <th className="border border-black p-1 w-[7%]">Tgl Lahir</th>
+                        <th className="border border-black p-1 w-[6%]">Agama</th>
+                        <th className="border border-black p-1 w-[12%]">Alamat</th>
+                        <th className="border border-black p-1 w-[7%]">Pendidikan</th>
+                        <th className="border border-black p-1 w-[7%]">Pekerjaan</th>
+                        <th className="border border-black p-1 w-[6%]">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                <div className="break-inside-avoid mt-8 flex justify-end w-full">
-                  <div className="text-center w-64 uppercase font-bold print:text-[8pt] relative">
-                    <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1] || new Date().toLocaleDateString('id-ID')}</p>
-                    <p className="mb-6">Ketua RT.16 RW.04</p>
-                    {/* TTD DATADASAR: Gambar TTD menggores teks */}
-                    <div className="relative inline-block w-full">
-                      <img src="/ttd-guntur.png" alt="Tanda Tangan" className="absolute left-1/2 -top-16 transform -translate-x-1/2 w-50 h-auto z-10 pointer-events-none opacity-90 mix-blend-multiply" />
-                      <p className="relative z-0 underline underline-offset-2 mt-8">GUNTUR BAYU JANTORO</p>
+                    </thead>
+                    <tbody>
+                      {dataDasarSorted.map((w, i) => (
+                        <tr key={w.nik || i}>
+                          <td className="border border-black p-1 text-center">{i + 1}</td>
+                          <td className="border border-black p-1 font-mono text-center leading-tight">{w.no_kk || '-'}</td>
+                          <td className="border border-black p-1 font-mono text-center leading-tight">{w.nik || '-'}</td>
+                          <td className="border border-black p-1 uppercase font-medium leading-tight">{w.nama || '-'}</td>
+                          <td className="border border-black p-1 text-center">{String(w.jenis_kelamin).charAt(0)}</td>
+                          <td className="border border-black p-1 uppercase text-center leading-tight">{w.tempat_lahir || '-'}</td>
+                          <td className="border border-black p-1 text-center leading-tight">{w.tgl_lahir ? new Date(w.tgl_lahir).toLocaleDateString('id-ID') : '-'}</td>
+                          <td className="border border-black p-1 uppercase text-center leading-tight">{w.agama || '-'}</td>
+                          <td className="border border-black p-1 uppercase leading-tight print:text-[5.5pt]">{w.alamat || '-'}</td>
+                          <td className="border border-black p-1 uppercase text-center leading-tight">{w.pendidikan || '-'}</td>
+                          <td className="border border-black p-1 uppercase text-center leading-tight">{w.pekerjaan || '-'}</td>
+                          <td className="border border-black p-1 uppercase font-bold text-center leading-tight">{w.status_kk || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  
+                  <div className="break-inside-avoid mt-8 flex justify-end w-full">
+                    <div className="text-center w-64 uppercase font-bold print:text-[8pt] relative">
+                      <p>Palembang, {tanggalLaporanOtomatis.split(' / ')[1] || new Date().toLocaleDateString('id-ID')}</p>
+                      <p className="mb-6">Ketua RT.16 RW.04</p>
+                      {/* TTD DATADASAR: Gambar TTD menggores teks */}
+                      <div className="relative inline-block w-full">
+                        <img src="/ttd-guntur.png" alt="Tanda Tangan" className="absolute left-1/2 -top-16 transform -translate-x-1/2 w-50 h-auto z-10 pointer-events-none opacity-90 mix-blend-multiply" />
+                        <p className="relative z-0 underline underline-offset-2 mt-8">GUNTUR BAYU JANTORO</p>
+                      </div>
                     </div>
                   </div>
+
                 </div>
-              </div>
+             </div>
+             {/* ---- MODIFIKASI BERAKHIR DI SINI ---- */}
+
           </div>
         </div>
       )}

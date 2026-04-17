@@ -399,7 +399,7 @@ export default function DashboardWarga() {
       {activeTab === 'tugas_petugas' && !cetakSurat && wargaAktif.is_petugas_iuran && <PetugasPemungutanView wargaAktif={wargaAktif} />}
 
       {/* ========================================== */}
-      {/* TAMPILAN PREVIEW & CETAK SURAT KELURAHAN   */}
+      {/* TAMPILAN PREVIEW & CETAK SURAT KELURAHAN (RESPONSIVE) */}
       {/* ========================================== */}
       {cetakSurat && (
         <div className="print-container m-0 p-0 shadow-none max-w-5xl mx-auto print:font-serif">
@@ -415,44 +415,45 @@ export default function DashboardWarga() {
             </div>
           </div>
 
-          <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0 flex justify-center">
-            {/* KERTAS A4 - 1 HALAMAN PAS */}
+          <div className="w-full overflow-x-hidden sm:overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0 flex justify-center">
+            
+            {/* KERTAS A4 - RESPONSIVE DI HP, KAKU SAAT PRINT/DESKTOP */}
             <div 
-              className="bg-white shadow-2xl print:shadow-none font-serif text-[12pt] leading-snug text-justify text-black relative" 
-              style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '1.5cm 2cm' }}
+              className="bg-white shadow-2xl print:shadow-none font-serif text-sm sm:text-[12pt] print:text-[12pt] leading-snug text-justify text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:h-[297mm] p-4 sm:p-[1.5cm_2cm] print:p-[1.5cm_2cm] box-border mx-auto"
             >
+              
               {/* --- KOP SURAT --- */}
-              <div className="relative border-b-[3px] border-black pb-2 mb-4 flex justify-center">
+              <div className="relative border-b-[3px] border-black pb-2 mb-4 flex justify-center items-center">
                 <div className="absolute left-0 top-1/2 -translate-y-1/2">
-                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
+                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-14 h-14 sm:w-24 sm:h-24 print:w-24 print:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
                 </div>
-                <div className="w-full text-center pl-8">
-                  <h2 className="text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
-                  <h2 className="text-[14pt] font-bold uppercase leading-tight whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
-                  <h1 className="text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
-                  <p className="text-[11pt] mt-1 leading-tight">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                <div className="w-full text-center pl-16 sm:pl-8 print:pl-8">
+                  <h2 className="text-[11pt] sm:text-[14pt] print:text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
+                  <h2 className="text-[11pt] sm:text-[14pt] print:text-[14pt] font-bold uppercase leading-tight whitespace-normal sm:whitespace-nowrap print:whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                  <h1 className="text-[12pt] sm:text-[14pt] print:text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
+                  <p className="text-[9pt] sm:text-[11pt] print:text-[11pt] mt-1 leading-tight">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
                 </div>
               </div>
 
               {/* --- JUDUL SURAT --- */}
               <div className="text-center mb-5 break-inside-avoid">
-                <h1 className="font-bold text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
-                <p className="text-[12pt] mt-1">Nomor : {cetakSurat?.nomorSurat}</p>
+                <h1 className="font-bold text-base sm:text-[14pt] print:text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
+                <p className="text-sm sm:text-[12pt] print:text-[12pt] mt-1">Nomor : {cetakSurat?.nomorSurat}</p>
               </div>
 
               {/* --- ISI SURAT --- */}
               <p className="mb-2 text-left">Yang bertanda tangan dibawah ini :</p>
-              <table className="mb-3 ml-4 leading-snug break-inside-avoid text-[12pt]">
+              <table className="mb-3 ml-0 sm:ml-4 print:ml-4 leading-snug break-inside-avoid w-full sm:w-auto text-[10pt] sm:text-[12pt] print:text-[12pt]">
                 <tbody>
-                  <tr><td className="w-40 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
+                  <tr><td className="w-24 sm:w-40 print:w-40 align-top">Nama</td><td className="w-2 sm:w-4 print:w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
                   <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td className="align-top">Ketua RT.16</td></tr>
                 </tbody>
               </table>
 
               <p className="mb-2 text-left">Dengan ini menerangkan bahwa :</p>
-              <table className="mb-3 ml-4 leading-snug break-inside-avoid text-[12pt]">
+              <table className="mb-3 ml-0 sm:ml-4 print:ml-4 leading-snug break-inside-avoid w-full sm:w-auto text-[10pt] sm:text-[12pt] print:text-[12pt]">
                 <tbody>
-                  <tr><td className="w-40 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
+                  <tr><td className="w-24 sm:w-40 print:w-40 align-top py-0.5">Nama</td><td className="w-2 sm:w-4 print:w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">NIK</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.nik || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">Jenis Kelamin</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td></tr>
                   <tr><td className="align-top py-0.5">Tempat/Tgl. Lahir</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
@@ -463,17 +464,17 @@ export default function DashboardWarga() {
                 </tbody>
               </table>
 
-              <p className="mb-2 text-justify indent-[1cm]">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              <p className="mb-2 text-justify indent-6 sm:indent-[1cm] print:indent-[1cm]">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
               
               <p className="mb-2 text-left">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
               <p className="mb-4 text-left break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
               
               {/* --- AREA TANDA TANGAN --- */}
-              <div className="w-full mt-4 break-inside-avoid text-[12pt] leading-normal flex relative z-10">
+              <div className="w-full mt-4 break-inside-avoid text-[10pt] sm:text-[12pt] print:text-[12pt] leading-normal flex relative z-10">
                 <div className="w-1/2 text-center">
                   <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
                   <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
-                  <div className="h-20"></div>
+                  <div className="h-16 sm:h-20 print:h-20"></div>
                   <p className="font-bold uppercase underline" style={{ textUnderlineOffset: '2px' }}>HERIYANSAH</p>
                 </div>
                 
@@ -481,8 +482,8 @@ export default function DashboardWarga() {
                   <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
                   <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
                   
-                  <div className="h-20 relative w-full flex items-center justify-center">
-                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-30px] w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  <div className="h-16 sm:h-20 print:h-20 relative w-full flex items-center justify-center">
+                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-15px] sm:bottom-[-30px] print:bottom-[-30px] w-28 sm:w-56 print:w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
                   </div>
 
                   <p className="font-bold uppercase underline relative z-0" style={{ textUnderlineOffset: '2px' }}>
@@ -492,7 +493,7 @@ export default function DashboardWarga() {
               </div>
 
               {/* --- CATATAN PBB --- */}
-              <div className="mt-6 text-[11pt] leading-tight break-inside-avoid text-left relative z-10">
+              <div className="mt-6 text-xs sm:text-[11pt] print:text-[11pt] leading-tight break-inside-avoid text-left relative z-10">
                 <p className="font-bold">Catatan :</p>
                 <p>PBB Tahun {new Date().getFullYear()} : <span className="font-bold">{cetakSurat?.pbb || 'Lunas'}</span></p>
               </div>
@@ -524,6 +525,8 @@ export default function DashboardWarga() {
           .break-inside-avoid { break-inside: avoid !important; }
           table { page-break-inside: avoid !important; }
         }
+        .text-capitalize { text-transform: capitalize; }
+        .text-indent-8 { text-indent: 1cm; }
       `}} />
     </div>
   );
