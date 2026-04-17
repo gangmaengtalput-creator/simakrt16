@@ -1,7 +1,7 @@
 // File: src/app/dashboard/warga/page.jsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
@@ -16,6 +16,11 @@ export const dynamic = 'force-dynamic';
 export default function DashboardWarga() {
   const router = useRouter();
   
+  // ==========================================
+  // STATE KEAMANAN & AUTENTIKASI AWAL
+  // ==========================================
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Gembok Halaman
+
   // ==========================================
   // STATE AUTENTIKASI & DATA DIRI
   // ==========================================
@@ -42,12 +47,16 @@ export default function DashboardWarga() {
   const [cetakSurat, setCetakSurat] = useState(null); 
 
   // ==========================================
-  // FUNGSI UMUM & AUTENTIKASI
+  // FUNGSI UMUM & AUTENTIKASI (WITH ERROR HANDLING)
   // ==========================================
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/'); 
-  };
+  const handleLogout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/'); 
+    } catch (err) {
+      console.error("Logout Error:", err);
+    }
+  }, [router]);
 
   const handleErrorModalClose = async () => {
     if (errorModal.type === 'FATAL') {
@@ -57,6 +66,68 @@ export default function DashboardWarga() {
     }
   };
 
+  // ==========================================
+  // EFFECT 1: CEK OTORISASI (AUTH GUARD)
+  // ==========================================
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          router.push('/');
+          return;
+        }
+      } catch (err) {
+        console.error("Gagal memverifikasi sesi:", err.message);
+        router.push('/');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    checkAuth();
+  }, [router]);
+
+  // ==========================================
+  // EFFECT 2: AUTO LOGOUT (IDLE 5 MENIT)
+  // ==========================================
+  useEffect(() => {
+    // Jangan jalankan timer jika halaman masih memuat awal
+    if (isCheckingAuth) return;
+
+    let timeoutId;
+    const IDLE_TIME_LIMIT = 5 * 60 * 1000; // 5 Menit
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama 5 menit.");
+        await handleLogout();
+      }, IDLE_TIME_LIMIT);
+    };
+
+    // Deteksi interaksi pengguna
+    const activityEvents = [
+      'mousedown', 'mousemove', 'keypress', 
+      'scroll', 'touchstart', 'click'
+    ];
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    resetTimer(); // Mulai timer pertama kali
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [isCheckingAuth, handleLogout]);
+
+  // ==========================================
+  // FUNGSI VERIFIKASI WARGA (2FA SEDERHANA)
+  // ==========================================
   const verifikasiWarga = async (e) => {
     e.preventDefault();
     setIsLoadingAuth(true);
@@ -119,11 +190,17 @@ export default function DashboardWarga() {
   };
 
   const fetchDataWarga = async (nik) => {
-    const { data: dataSurat } = await supabase.from('permintaan_surat').select('*').eq('nik_pemohon', nik).order('created_at', { ascending: false });
-    if (dataSurat) setListPermintaan(dataSurat);
+    try {
+      const { data: dataSurat, error: errorSurat } = await supabase.from('permintaan_surat').select('*').eq('nik_pemohon', nik).order('created_at', { ascending: false });
+      if (errorSurat) throw errorSurat;
+      if (dataSurat) setListPermintaan(dataSurat);
 
-    const { data: dataUsulan } = await supabase.from('usulan_warga').select('*').eq('nik_pengusul', nik).order('created_at', { ascending: false });
-    if (dataUsulan) setListUsulan(dataUsulan);
+      const { data: dataUsulan, error: errorUsulan } = await supabase.from('usulan_warga').select('*').eq('nik_pengusul', nik).order('created_at', { ascending: false });
+      if (errorUsulan) throw errorUsulan;
+      if (dataUsulan) setListUsulan(dataUsulan);
+    } catch (err) {
+      console.error("Gagal menarik data personal warga:", err.message);
+    }
   };
 
   const fetchIuranWarga = async (no_kk) => {
@@ -131,7 +208,6 @@ export default function DashboardWarga() {
     try {
       if (!no_kk) {
         setListIuran([]);
-        setIsLoadingIuran(false);
         return;
       }
 
@@ -141,7 +217,6 @@ export default function DashboardWarga() {
       const listNikKeluarga = anggotaKeluarga.map(anggota => String(anggota.nik));
       if (listNikKeluarga.length === 0) {
         setListIuran([]);
-        setIsLoadingIuran(false);
         return;
       }
 
@@ -153,9 +228,10 @@ export default function DashboardWarga() {
         .order('tahun_iuran', { ascending: false })
         .order('bulan_iuran', { ascending: false });
 
-      if (!error) setListIuran(data || []);
+      if (error) throw error;
+      if (data) setListIuran(data);
     } catch (err) {
-      console.error("Gagal menarik data iuran:", err);
+      console.error("Gagal menarik data iuran:", err.message);
     } finally {
       setIsLoadingIuran(false);
     }
@@ -163,8 +239,11 @@ export default function DashboardWarga() {
 
   const fetchTotalSaldoKas = async () => {
     try {
-      const { data: dataIuran } = await supabase.from('iuran_kas').select('*');
-      const { data: dataPengeluaran } = await supabase.from('pengeluaran_kas').select('*');
+      const { data: dataIuran, error: errIuran } = await supabase.from('iuran_kas').select('*');
+      const { data: dataPengeluaran, error: errKeluar } = await supabase.from('pengeluaran_kas').select('*');
+
+      if (errIuran) throw errIuran;
+      if (errKeluar) throw errKeluar;
 
       let totalPemasukan = 0; let totalPengeluaran = 0; const gabunganKas = []; 
 
@@ -190,8 +269,24 @@ export default function DashboardWarga() {
       gabunganKas.sort((a, b) => b.tanggal - a.tanggal);
       setSaldoTotal(totalPemasukan - totalPengeluaran);
       setListBukuKas(gabunganKas); 
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error("Gagal menghitung saldo kas:", err.message); 
+    }
   };
+
+  // ==========================================
+  // RENDER LAYAR LOADING (SECURITY FIRST)
+  // ==========================================
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium animate-pulse">Memverifikasi Sesi Warga...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ==========================================
   // TAMPILAN 1: VERIFIKASI NIK
@@ -261,7 +356,7 @@ export default function DashboardWarga() {
             <p className="text-xs sm:text-sm text-gray-600">Panel Layanan Mandiri RT.16</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="w-full sm:w-auto bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 font-bold text-sm">Keluar</button>
+        <button onClick={handleLogout} className="w-full sm:w-auto bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 font-bold text-sm transition-colors">Keluar</button>
       </div>
 
       {/* NAVIGASI TAB */}
@@ -294,6 +389,7 @@ export default function DashboardWarga() {
           wargaAktif={wargaAktif}
           listPermintaan={listPermintaan}
           fetchDataWarga={fetchDataWarga}
+          cetakSurat={cetakSurat}
           setCetakSurat={setCetakSurat}
         />
       )}
@@ -310,71 +406,74 @@ export default function DashboardWarga() {
           <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-800 p-4 rounded-lg print:hidden sticky top-4 z-50">
             <p className="text-white font-medium text-sm">Pratinjau Surat Siap Cetak (Kertas A4)</p>
             <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={() => setCetakSurat(null)} className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded font-bold text-sm hover:bg-gray-500">
+              <button onClick={() => setCetakSurat(null)} className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded font-bold text-sm hover:bg-gray-500 transition-colors">
                 Tutup Dokumen
               </button>
-              <button onClick={() => window.print()} className="flex-1 sm:flex-none px-6 py-2 bg-blue-500 text-white rounded font-bold text-sm hover:bg-blue-400">
+              <button onClick={() => window.print()} className="flex-1 sm:flex-none px-6 py-2 bg-blue-500 text-white rounded font-bold text-sm hover:bg-blue-400 transition-colors">
                 Cetak Sekarang
               </button>
             </div>
           </div>
 
-          <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0">
-            <div className="bg-white mx-auto shadow-2xl print:shadow-none font-serif text-[12pt] leading-relaxed text-justify text-black" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', padding: '1.5cm 2cm 1.5cm 2cm' }}>
-              
+          <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0 flex justify-center">
+            {/* KERTAS A4 - 1 HALAMAN PAS */}
+            <div 
+              className="bg-white shadow-2xl print:shadow-none font-serif text-[12pt] leading-snug text-justify text-black relative" 
+              style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '1.5cm 2cm' }}
+            >
               {/* --- KOP SURAT --- */}
-              <div className="relative border-b-[3px] border-black pb-3 mb-6 flex justify-center">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2">
-                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
+              <div className="relative border-b-[3px] border-black pb-2 mb-4 flex justify-center">
+                <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
                 </div>
-                <div className="w-full text-center">
+                <div className="w-full text-center pl-8">
                   <h2 className="text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
                   <h2 className="text-[14pt] font-bold uppercase leading-tight whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
                   <h1 className="text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
-                  <p className="text-[12pt] mt-1 leading-normal">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                  <p className="text-[11pt] mt-1 leading-tight">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
                 </div>
               </div>
 
               {/* --- JUDUL SURAT --- */}
-              <div className="text-center mb-8 break-inside-avoid">
+              <div className="text-center mb-5 break-inside-avoid">
                 <h1 className="font-bold text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
-                <p className="text-[12pt]">Nomor : {cetakSurat?.nomorSurat}</p>
+                <p className="text-[12pt] mt-1">Nomor : {cetakSurat?.nomorSurat}</p>
               </div>
 
               {/* --- ISI SURAT --- */}
-              <p className="mb-4 text-left">Yang bertanda tangan dibawah ini :</p>
-              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+              <p className="mb-2 text-left">Yang bertanda tangan dibawah ini :</p>
+              <table className="mb-3 ml-4 leading-snug break-inside-avoid text-[12pt]">
                 <tbody>
-                  <tr><td className="w-48 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
+                  <tr><td className="w-40 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
                   <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td className="align-top">Ketua RT.16</td></tr>
                 </tbody>
               </table>
 
-              <p className="mb-4 text-left">Dengan ini menerangkan bahwa :</p>
-              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+              <p className="mb-2 text-left">Dengan ini menerangkan bahwa :</p>
+              <table className="mb-3 ml-4 leading-snug break-inside-avoid text-[12pt]">
                 <tbody>
-                  <tr><td className="w-48 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
+                  <tr><td className="w-40 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">NIK</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.nik || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">Jenis Kelamin</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td></tr>
                   <tr><td className="align-top py-0.5">Tempat/Tgl. Lahir</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">Bangsa/Agama</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">Indonesia / {cetakSurat?.warga?.agama || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5" style={{textTransform: 'capitalize'}}>{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td></tr>
+                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5 capitalize">{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju</td></tr>
                   <tr><td className="align-top py-0.5">Kartu Keluarga No</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.no_kk || '-'}</td></tr>
                 </tbody>
               </table>
 
-              <p className="mb-4 text-justify" style={{ textIndent: '1cm' }}>Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              <p className="mb-2 text-justify indent-[1cm]">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
               
-              <p className="mb-4 text-left leading-normal">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
-              <p className="mb-12 text-left leading-normal break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+              <p className="mb-2 text-left">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
+              <p className="mb-4 text-left break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
               
-              {/* --- AREA TANDA TANGAN DENGAN OVERLAP TTD PNG --- */}
-              <div className="w-full mt-8 break-inside-avoid text-[12pt] leading-normal flex">
+              {/* --- AREA TANDA TANGAN --- */}
+              <div className="w-full mt-4 break-inside-avoid text-[12pt] leading-normal flex relative z-10">
                 <div className="w-1/2 text-center">
                   <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
                   <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
-                  <div className="h-24"></div>
+                  <div className="h-20"></div>
                   <p className="font-bold uppercase underline" style={{ textUnderlineOffset: '2px' }}>HERIYANSAH</p>
                 </div>
                 
@@ -382,19 +481,10 @@ export default function DashboardWarga() {
                   <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
                   <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
                   
-                  {/* Wadah Tanda Tangan */}
-                  <div className="h-24 relative w-full flex items-center justify-center">
-                    {/* Gambar Tanda Tangan (PNG) */}
-                    <img 
-                      src="/ttd-guntur.png" 
-                      alt="TTD" 
-                      className="absolute bottom-[-45px] w-64 h-auto z-10 pointer-events-none" 
-                      style={{ mixBlendMode: 'multiply' }}
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
+                  <div className="h-20 relative w-full flex items-center justify-center">
+                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-30px] w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
                   </div>
 
-                  {/* Nama Terang */}
                   <p className="font-bold uppercase underline relative z-0" style={{ textUnderlineOffset: '2px' }}>
                     GUNTUR BAYU JANTORO
                   </p>
@@ -402,25 +492,36 @@ export default function DashboardWarga() {
               </div>
 
               {/* --- CATATAN PBB --- */}
-              <div className="mt-16 text-[12pt] leading-normal break-inside-avoid text-left">
-                <p>Catatan :</p>
-                <p>PBB Tahun {new Date().getFullYear()}</p>
-                <p>Status: <span className="font-bold">{cetakSurat?.pbb || 'Lunas'}</span></p>
+              <div className="mt-6 text-[11pt] leading-tight break-inside-avoid text-left relative z-10">
+                <p className="font-bold">Catatan :</p>
+                <p>PBB Tahun {new Date().getFullYear()} : <span className="font-bold">{cetakSurat?.pbb || 'Lunas'}</span></p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* GLOBAL PRINT CSS UNTUK PAGE.JSX */}
+      {/* GLOBAL PRINT CSS MURNI DAN AMAN (NO BLANK PAGE) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          @page { size: A4 portrait !important; margin: 0; }
-          body { background: white !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-          .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-          .max-w-5xl > :not(.print-container) { display: none !important; }
-          .print-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
-          .break-inside-avoid { break-inside: avoid !important; -webkit-column-break-inside: avoid !important; page-break-inside: avoid !important; }
+          @page { size: A4 portrait !important; margin: 0 !important; }
+          body, html { 
+            background: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            -webkit-print-color-adjust: exact !important; 
+            color-adjust: exact !important; 
+          }
+          .print-container { 
+            display: flex !important; 
+            justify-content: center !important; 
+            width: 100% !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            border: none !important; 
+            box-shadow: none !important; 
+          }
+          .break-inside-avoid { break-inside: avoid !important; }
           table { page-break-inside: avoid !important; }
         }
       `}} />

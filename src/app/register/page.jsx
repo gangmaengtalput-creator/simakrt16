@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
@@ -18,39 +18,127 @@ export default function Register() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // ==========================================
+  // STATE KEAMANAN: Proteksi Anti-Enumerasi NIK
+  // ==========================================
+  const [failedChecks, setFailedChecks] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockdownTimer, setLockdownTimer] = useState(0);
+
+  // Cek status lockout dari localStorage (Anti-Refresh Bypass)
+  useEffect(() => {
+    const lockedUntil = localStorage.getItem('register_lockout_time');
+    const savedAttempts = localStorage.getItem('register_failed_checks');
+    
+    if (savedAttempts) setFailedChecks(parseInt(savedAttempts));
+
+    if (lockedUntil) {
+      const remainingTime = Math.ceil((parseInt(lockedUntil) - Date.now()) / 1000);
+      if (remainingTime > 0) {
+        setIsLocked(true);
+        setLockdownTimer(remainingTime);
+      } else {
+        localStorage.removeItem('register_lockout_time');
+        localStorage.removeItem('register_failed_checks');
+        setFailedChecks(0);
+      }
+    }
+  }, []);
+
+  // Timer untuk sistem Lockout
+  useEffect(() => {
+    let timer;
+    if (isLocked && lockdownTimer > 0) {
+      timer = setInterval(() => setLockdownTimer((prev) => prev - 1), 1000);
+    } else if (isLocked && lockdownTimer === 0) {
+      setIsLocked(false);
+      setFailedChecks(0);
+      setErrorMsg('');
+      localStorage.removeItem('register_lockout_time');
+      localStorage.removeItem('register_failed_checks');
+    }
+    return () => clearInterval(timer);
+  }, [isLocked, lockdownTimer]);
+
+  // Handler Keamanan untuk input NIK (Hanya Angka)
+  const handleNikChange = (e) => {
+    const onlyNumbers = e.target.value.replace(/[^0-9]/g, '');
+    if (onlyNumbers.length <= 16) setNik(onlyNumbers);
+  };
+
+  // Handler Keamanan untuk input No HP (Hanya Angka)
+  const handlePhoneChange = (e) => {
+    const onlyNumbers = e.target.value.replace(/[^0-9]/g, '');
+    setFormData({ ...formData, no_hp: onlyNumbers });
+  };
+
+  const handleFailedNikCheck = (msg) => {
+    const newAttempts = failedChecks + 1;
+    setFailedChecks(newAttempts);
+    localStorage.setItem('register_failed_checks', newAttempts.toString());
+
+    if (newAttempts >= 5) {
+      setIsLocked(true);
+      setLockdownTimer(60);
+      localStorage.setItem('register_lockout_time', (Date.now() + 60000).toString());
+      setErrorMsg("Terlalu banyak percobaan pencarian. Silakan tunggu 60 detik.");
+    } else {
+      setErrorMsg(msg);
+    }
+    setIsLoading(false);
+  };
+
+  // ==========================================
   // TAHAP 1: CEK NIK & AMBIL DATA DIRI WARGA
   // ==========================================
   const handleCheckNIK = async (e) => {
     e.preventDefault();
+    if (isLocked) return;
     setErrorMsg('');
+
+    // KEAMANAN: Validasi Panjang NIK
+    if (nik.length !== 16) {
+      setErrorMsg("NIK harus terdiri dari tepat 16 digit angka.");
+      return;
+    }
+
     setIsLoading(true);
 
-    // Cek di tabel referensi RT sekaligus mengambil nama & tanggal lahir
-    const { data: masterData, error } = await supabase
-      .from('master_warga')
-      .select('is_registered, nama, tgl_lahir')
-      .eq('nik', String(nik).trim())
-      .single();
+    try {
+      // Cek di tabel referensi RT sekaligus mengambil nama & tanggal lahir
+      const { data: masterData, error } = await supabase
+        .from('master_warga')
+        .select('is_registered, nama, tgl_lahir')
+        .eq('nik', nik)
+        .single();
 
-    setIsLoading(false);
+      if (error || !masterData) {
+        handleFailedNikCheck("NIK tidak ditemukan. Anda bukan warga RT kami.");
+        return;
+      }
 
-    if (error || !masterData) {
-      setErrorMsg("NIK tidak ditemukan. Anda bukan warga RT kami.");
-      return;
+      if (masterData.is_registered) {
+        setErrorMsg("NIK ini sudah memiliki akun. Silakan menuju halaman Login.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Reset jejak kegagalan jika NIK valid
+      setFailedChecks(0);
+      localStorage.removeItem('register_failed_checks');
+
+      // Jika NIK valid dan belum daftar, isi form otomatis dan lanjut ke Tahap 2
+      setFormData({
+        ...formData,
+        nama: masterData.nama || '',
+        tanggal_lahir: masterData.tgl_lahir ? String(masterData.tgl_lahir).split('T')[0] : ''
+      });
+      setStep(2);
+      setIsLoading(false);
+
+    } catch (err) {
+      setErrorMsg("Terjadi kesalahan pada server. Silakan coba lagi.");
+      setIsLoading(false);
     }
-
-    if (masterData.is_registered) {
-      setErrorMsg("NIK ini sudah memiliki akun. Silakan menuju halaman Login.");
-      return;
-    }
-
-    // Jika NIK valid dan belum daftar, isi form otomatis dan lanjut ke Tahap 2
-    setFormData({
-      ...formData,
-      nama: masterData.nama || '',
-      tanggal_lahir: masterData.tgl_lahir ? String(masterData.tgl_lahir).split('T')[0] : ''
-    });
-    setStep(2);
   };
 
   // ==========================================
@@ -59,6 +147,17 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+
+    // KEAMANAN: Validasi Kekuatan Password & No HP minimal
+    if (formData.password.length < 8) {
+      setErrorMsg("Password terlalu lemah. Gunakan minimal 8 karakter demi keamanan.");
+      return;
+    }
+    if (formData.no_hp.length < 9) {
+      setErrorMsg("Nomor HP tidak valid. Harap periksa kembali.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -68,19 +167,25 @@ export default function Register() {
         password: formData.password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+           throw new Error("Email ini sudah digunakan. Silakan gunakan email lain.");
+        }
+        throw authError;
+      }
 
       // 2. Simpan Kelengkapan Data ke tabel profiles
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{
           id: authData.user.id,
-          nik: String(nik).trim(),
+          nik: nik,
           nama: formData.nama,
           tanggal_lahir: formData.tanggal_lahir,
           no_hp: formData.no_hp,
           email: formData.email,
-          role: 'warga'
+          role: 'warga',
+          status: 'pending' // Rekomendasi keamanan: Akun baru harus di-approve RT
         }]);
 
       if (profileError) throw profileError;
@@ -89,7 +194,7 @@ export default function Register() {
       const { error: updateError } = await supabase
         .from('master_warga')
         .update({ is_registered: true })
-        .eq('nik', String(nik).trim());
+        .eq('nik', nik);
 
       if (updateError) throw updateError;
 
@@ -120,20 +225,27 @@ export default function Register() {
               <label className="block text-sm font-bold text-gray-700 mb-1 text-left">Langkah 1: Cek NIK Anda untuk memastikan bahwa anda adalah warga RT 16.</label>
               <input 
                 type="text" 
+                inputMode="numeric"
                 placeholder="Masukkan 16 Digit NIK" 
                 value={nik}
-                onChange={(e) => setNik(e.target.value)} 
+                onChange={handleNikChange} 
                 required 
-                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 text-center text-lg tracking-widest outline-none"
+                disabled={isLocked || isLoading}
+                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 text-center text-lg tracking-widest outline-none disabled:bg-gray-100 disabled:opacity-60 transition-colors"
               />
             </div>
-            {errorMsg && <p className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded">{errorMsg}</p>}
+            {errorMsg && (
+              <div className={`p-2 rounded text-sm font-medium text-center ${isLocked ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-500'}`}>
+                <p>{errorMsg}</p>
+                {isLocked && <p className="mt-1">Sisa waktu: {lockdownTimer} detik</p>}
+              </div>
+            )}
             <button 
               type="submit" 
-              disabled={isLoading}
-              className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+              disabled={isLoading || isLocked}
+              className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-md disabled:bg-green-400"
             >
-              {isLoading ? 'Mengecek Database...' : 'Cek NIK Saya'}
+              {isLoading ? 'Mengecek Database...' : isLocked ? 'Terkunci Sementara' : 'Cek NIK Saya'}
             </button>
           </form>
         )}
@@ -183,9 +295,10 @@ export default function Register() {
               <label className="block text-xs font-bold text-gray-700 mb-1">Nomor WhatsApp / HP <span className="text-red-500">*</span></label>
               <input 
                 type="text" 
+                inputMode="numeric"
                 placeholder="Contoh: 08123456789" 
                 value={formData.no_hp}
-                onChange={(e) => setFormData({...formData, no_hp: e.target.value})} 
+                onChange={handlePhoneChange} 
                 required 
                 className="w-full px-4 py-2 border rounded-md focus:ring-green-500 outline-none"
               />
@@ -208,7 +321,7 @@ export default function Register() {
               <div className="relative">
                 <input 
                   type={showPassword ? "text" : "password"} 
-                  placeholder="Minimal 6 karakter" 
+                  placeholder="Minimal 8 karakter" 
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})} 
                   required 
@@ -223,12 +336,10 @@ export default function Register() {
                   title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                 >
                   {showPassword ? (
-                    // Icon Mata Dicoret (Hide)
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                     </svg>
                   ) : (
-                    // Icon Mata Terbuka (Show)
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

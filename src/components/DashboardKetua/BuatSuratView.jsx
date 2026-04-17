@@ -310,102 +310,95 @@ export default function BuatSuratView({
             </div>
           </div>
 
-          <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0">
-            <div className="bg-white mx-auto shadow-2xl print:shadow-none font-serif text-[12pt] leading-relaxed text-justify text-black" style={{ width: '210mm', minWidth: '210mm', minHeight: '297mm', padding: '1.5cm 2cm 1.5cm 2cm' }}>
+          <div className="w-full overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-white print:p-0 flex justify-center">
+            
+            {/* KERTAS A4 - 1 HALAMAN PAS */}
+            <div 
+              className="bg-white shadow-2xl print:shadow-none font-serif text-[12pt] leading-snug text-justify text-black relative" 
+              style={{ width: '210mm', height: '297mm', boxSizing: 'border-box', padding: '1.5cm 2cm' }}
+            >
               
               {/* --- KOP SURAT --- */}
-              <div className="relative border-b-[3px] border-black pb-3 mb-6 flex justify-center">
-                <div className="absolute left-2 top-1/2 -translate-y-1/2">
-                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Lambang_Kota_Palembang.png/430px-Lambang_Kota_Palembang.png"; }} />
+              <div className="relative border-b-[3px] border-black pb-2 mb-4 flex justify-center">
+                <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
                 </div>
-                <div className="w-full text-center">
+                <div className="w-full text-center pl-8">
                   <h2 className="text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
                   <h2 className="text-[14pt] font-bold uppercase leading-tight whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
                   <h1 className="text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
-                  <p className="text-[12pt] mt-1 leading-normal">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                  <p className="text-[11pt] mt-1 leading-tight">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
                 </div>
               </div>
 
               {/* --- JUDUL SURAT --- */}
-              <div className="text-center mb-8 break-inside-avoid">
+              <div className="text-center mb-5 break-inside-avoid">
                 <h1 className="font-bold text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
-                <p className="text-[12pt]">Nomor : {cetakSurat?.nomorSurat}</p>
+                <p className="text-[12pt] mt-1">Nomor : {cetakSurat?.nomorSurat}</p>
               </div>
 
               {/* --- ISI SURAT --- */}
-              <p className="mb-4 text-left">Yang bertanda tangan dibawah ini :</p>
-              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+              <p className="mb-2 text-left">Yang bertanda tangan dibawah ini :</p>
+              <table className="mb-3 ml-4 leading-snug break-inside-avoid text-[12pt]">
                 <tbody>
-                  <tr><td className="w-48 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
+                  <tr><td className="w-40 align-top">Nama</td><td className="w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
                   <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td className="align-top">Ketua RT.16</td></tr>
                 </tbody>
               </table>
 
-              <p className="mb-4 text-left">Dengan ini menerangkan bahwa :</p>
-              <table className="mb-6 ml-4 leading-normal break-inside-avoid text-[12pt]">
+              <p className="mb-2 text-left">Dengan ini menerangkan bahwa :</p>
+              <table className="mb-3 ml-4 leading-snug break-inside-avoid text-[12pt]">
                 <tbody>
-                  <tr><td className="w-48 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
+                  <tr><td className="w-40 align-top py-0.5">Nama</td><td className="w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">NIK</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.nik || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">Jenis Kelamin</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td></tr>
                   <tr><td className="align-top py-0.5">Tempat/Tgl. Lahir</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
                   <tr><td className="align-top py-0.5">Bangsa/Agama</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">Indonesia / {cetakSurat?.warga?.agama || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5 text-capitalize">{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td></tr>
+                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5 capitalize">{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
+                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju</td></tr>
                   <tr><td className="align-top py-0.5">Kartu Keluarga No</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.no_kk || '-'}</td></tr>
                 </tbody>
               </table>
 
-              <p className="mb-4 text-justify text-indent-8">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              <p className="mb-2 text-justify indent-[1cm]">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
               
-              <p className="mb-4 text-left leading-normal">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
-              <p className="mb-12 text-left leading-normal break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+              <p className="mb-2 text-left">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
+              <p className="mb-4 text-left break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
               
-              {/* --- AREA TANDA TANGAN DENGAN OVERLAP TTD PNG (DIPERBESAR & DITURUNKAN) --- */}
-              <div className="w-full mt-8 break-inside-avoid text-[12pt] leading-normal flex">
-                {/* Bagian Ketua RW */}
+              {/* --- AREA TANDA TANGAN --- */}
+              <div className="w-full mt-4 break-inside-avoid text-[12pt] leading-normal flex relative z-10">
                 <div className="w-1/2 text-center">
                   <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
                   <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
-                  <div className="h-24"></div>
-                  <p className="font-bold uppercase underline underline-offset-2">HERIYANSAH</p>
+                  <div className="h-20"></div>
+                  <p className="font-bold uppercase underline" style={{ textUnderlineOffset: '2px' }}>HERIYANSAH</p>
                 </div>
                 
-                {/* Bagian Ketua RT dengan TTD Melayang yang Diperbesar */}
                 <div className="w-1/2 text-center flex flex-col items-center">
                   <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
                   <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
                   
-                  {/* Wadah Tanda Tangan */}
-                  <div className="h-24 relative w-full flex items-center justify-center">
-                    {/* Gambar Tanda Tangan (PNG) */}
-                    <img 
-                      src="/ttd-guntur.png" 
-                      alt="TTD" 
-                      className="absolute bottom-[-45px] w-64 h-auto z-10 pointer-events-none" 
-                      style={{ mixBlendMode: 'multiply' }}
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
+                  <div className="h-20 relative w-full flex items-center justify-center">
+                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-30px] w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
                   </div>
 
-                  {/* Nama Terang */}
-                  <p className="font-bold uppercase underline underline-offset-2 relative z-0">
+                  <p className="font-bold uppercase underline relative z-0" style={{ textUnderlineOffset: '2px' }}>
                     GUNTUR BAYU JANTORO
                   </p>
                 </div>
               </div>
 
               {/* --- CATATAN PBB --- */}
-              <div className="mt-16 text-[12pt] leading-normal break-inside-avoid text-left">
-                <p>Catatan :</p>
-                <p>PBB Tahun {new Date().getFullYear()}</p>
-                <p>Status: <span className="font-bold">{cetakSurat?.pbb}</span></p>
+              <div className="mt-6 text-[11pt] leading-tight break-inside-avoid text-left relative z-10">
+                <p className="font-bold">Catatan :</p>
+                <p>PBB Tahun {new Date().getFullYear()} : <span className="font-bold">{cetakSurat?.pbb || 'Lunas'}</span></p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL EDIT & HAPUS (Tidak Berubah) */}
+      {/* MODAL EDIT & HAPUS */}
       {showSuratModal.edit && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden">
           <form onSubmit={simpanEditSurat} className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fade-in">
@@ -444,15 +437,27 @@ export default function BuatSuratView({
         </div>
       )}
 
-      {/* GLOBAL PRINT CSS */}
+      {/* GLOBAL PRINT CSS MURNI DAN AMAN (NO BLANK PAGE) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          @page { size: A4 portrait !important; margin: 0; }
-          body { background: white !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-          .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-          .max-w-5xl > :not(.print-container) { display: none !important; }
-          .print-container { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; shadow: none !important; }
-          .break-inside-avoid { break-inside: avoid !important; -webkit-column-break-inside: avoid !important; page-break-inside: avoid !important; }
+          @page { size: A4 portrait !important; margin: 0 !important; }
+          body, html { 
+            background: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            -webkit-print-color-adjust: exact !important; 
+            color-adjust: exact !important; 
+          }
+          .print-container { 
+            display: flex !important; 
+            justify-content: center !important; 
+            width: 100% !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            border: none !important; 
+            box-shadow: none !important; 
+          }
+          .break-inside-avoid { break-inside: avoid !important; }
           table { page-break-inside: avoid !important; }
         }
         .text-capitalize { text-transform: capitalize; }

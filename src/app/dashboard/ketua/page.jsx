@@ -23,6 +23,8 @@ export default function DashboardKetua() {
   // ==========================================
   // STATE GLOBAL UTAMA
   // ==========================================
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   const [activeView, setActiveView] = useState('menu'); 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -47,66 +49,128 @@ export default function DashboardKetua() {
   const [riwayatSurat, setRiwayatSurat] = useState([]);
 
   // ==========================================
-  // FUNGSI FETCH & LOGIC GLOBAL
+  // FUNGSI FETCH & LOGIC GLOBAL (WITH ERROR HANDLING)
   // ==========================================
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/'); 
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push('/'); 
+    } catch (err) {
+      console.error("Gagal logout:", err.message);
+      alert("Terjadi kesalahan saat logout. Silakan coba lagi.");
+    }
   };
 
   const fetchWarga = async () => {
     setIsLoading(true); 
     setActiveView('data_warga');
-    const { data } = await supabase.from('master_warga').select('*').order('nama', { ascending: true });
-    if (data) setDataWarga(data);
-    setIsLoading(false);
+    try {
+      const { data, error } = await supabase.from('master_warga').select('*').order('nama', { ascending: true });
+      if (error) throw error;
+      if (data) setDataWarga(data);
+    } catch (err) {
+      console.error("Error fetchWarga:", err.message);
+      alert("Gagal mengambil data warga.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchPermintaanMasuk = async () => {
     setActiveView('permintaan_masuk');
-    const { data } = await supabase.from('permintaan_surat').select('*').order('created_at', { ascending: false });
-    if (data) setPermintaanMasuk(data);
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.from('permintaan_surat').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data) setPermintaanMasuk(data);
+    } catch (err) {
+      console.error("Error fetchPermintaanMasuk:", err.message);
+      alert("Gagal mengambil data permintaan surat masuk.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchUsulan = async () => {
     setActiveView('manajemen_usulan');
-    const { data } = await supabase.from('usulan_warga').select('*').order('created_at', { ascending: false });
-    if (data) setUsulanMasuk(data);
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.from('usulan_warga').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data) setUsulanMasuk(data);
+    } catch (err) {
+      console.error("Error fetchUsulan:", err.message);
+      alert("Gagal mengambil data usulan warga.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchRiwayatIuran = async () => {
     setIsLoading(true);
-    if (dataWarga.length === 0) { 
-      const { data } = await supabase.from('master_warga').select('*').order('nama', { ascending: true }); 
-      if (data) setDataWarga(data); 
-    }
-    const { data: iuranDb } = await supabase.from('iuran_kas').select('*').order('tanggal_bayar', { ascending: false });
-    if (iuranDb) {
-      setListRiwayatIuran(iuranDb);
-      const totalSemua = iuranDb.reduce((acc, item) => acc + (item.jumlah || 0), 0);
-      setTotalSaldoAllTime(totalSemua);
-    }
     setActiveView('iuran_kas');
-    setIsLoading(false);
+    try {
+      if (dataWarga.length === 0) { 
+        const { data, error } = await supabase.from('master_warga').select('*').order('nama', { ascending: true }); 
+        if (error) throw error;
+        if (data) setDataWarga(data); 
+      }
+      const { data: iuranDb, error: iuranError } = await supabase.from('iuran_kas').select('*').order('tanggal_bayar', { ascending: false });
+      if (iuranError) throw iuranError;
+      
+      if (iuranDb) {
+        setListRiwayatIuran(iuranDb);
+        const totalSemua = iuranDb.reduce((acc, item) => acc + (item.jumlah || 0), 0);
+        setTotalSaldoAllTime(totalSemua);
+      }
+    } catch (err) {
+      console.error("Error fetchRiwayatIuran:", err.message);
+      alert("Gagal mengambil riwayat iuran.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchRiwayatPengeluaran = async (changeView = false) => {
-    const { data } = await supabase.from('pengeluaran_kas').select('*').order('tanggal', { ascending: false });
-    if (data) {
-      setListRiwayatPengeluaran(data);
-      const total = data.reduce((acc, item) => acc + (item.nominal || 0), 0);
-      setTotalPengeluaranAllTime(total);
+    if (changeView) {
+      setActiveView('pengeluaran_kas');
+      setIsLoading(true);
     }
-    if (changeView) setActiveView('pengeluaran_kas');
+    try {
+      const { data, error } = await supabase.from('pengeluaran_kas').select('*').order('tanggal', { ascending: false });
+      if (error) throw error;
+      
+      if (data) {
+        setListRiwayatPengeluaran(data);
+        const total = data.reduce((acc, item) => acc + (item.nominal || 0), 0);
+        setTotalPengeluaranAllTime(total);
+      }
+    } catch (err) {
+      console.error("Error fetchRiwayatPengeluaran:", err.message);
+      if (changeView) alert("Gagal mengambil data riwayat pengeluaran.");
+    } finally {
+      if (changeView) setIsLoading(false);
+    }
   };
 
   const fetchRiwayatSurat = async () => {
-    if (dataWarga.length === 0) { 
-      const { data } = await supabase.from('master_warga').select('*'); 
-      if (data) setDataWarga(data); 
+    setIsLoading(true);
+    try {
+      if (dataWarga.length === 0) { 
+        const { data, error } = await supabase.from('master_warga').select('*'); 
+        if (error) throw error;
+        if (data) setDataWarga(data); 
+      }
+      const { data: suratData, error: suratError } = await supabase.from('surat_keterangan').select('*').order('created_at', { ascending: false });
+      if (suratError) throw suratError;
+      if (suratData) setRiwayatSurat(suratData);
+    } catch (err) {
+      console.error("Error fetchRiwayatSurat:", err.message);
+      alert("Gagal mengambil riwayat surat.");
+    } finally {
+      setIsLoading(false);
     }
-    const { data: suratData } = await supabase.from('surat_keterangan').select('*').order('created_at', { ascending: false });
-    if (suratData) setRiwayatSurat(suratData);
   };
 
   const goToBuatSurat = () => {
@@ -120,40 +184,130 @@ export default function DashboardKetua() {
 
   const prosesPermintaanWarga = async (permintaan) => {
     setIsLoading(true);
-    const { data: wargaInfo } = await supabase.from('master_warga').select('*').eq('nik', permintaan.nik_pemohon).single();
-    
-    if (!wargaInfo) {
-      alert("Error: Data warga pemohon tidak ditemukan di master database.");
-      setIsLoading(false); return;
-    }
+    try {
+      const { data: wargaInfo, error } = await supabase.from('master_warga').select('*').eq('nik', permintaan.nik_pemohon).single();
+      
+      if (error) throw error;
+      
+      if (!wargaInfo) {
+        alert("Error: Data warga pemohon tidak ditemukan di master database.");
+        setIsLoading(false); return;
+      }
 
-    setWargaSurat(wargaInfo);
-    setSuratFormData({
-      deskripsi: permintaan.keterangan,
-      tujuan_surat: permintaan.tujuan,
-      pbb: 'Lunas'
-    });
-    setPermintaanAktifId(permintaan.id);
-    setActiveView('buat_surat');
-    setIsLoading(false);
+      setWargaSurat(wargaInfo);
+      setSuratFormData({
+        deskripsi: permintaan.keterangan,
+        tujuan_surat: permintaan.tujuan,
+        pbb: 'Lunas'
+      });
+      setPermintaanAktifId(permintaan.id);
+      setActiveView('buat_surat');
+    } catch (err) {
+      console.error("Error prosesPermintaanWarga:", err.message);
+      alert("Terjadi kesalahan saat memproses data warga pemohon.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Kalkulasi awal untuk saldo kas saat web dimuat
+  // ==========================================
+  // CEK LOGIN & INISIALISASI DATA AWAL
+  // ==========================================
   useEffect(() => {
-    fetchRiwayatPengeluaran();
-    const initSaldoIuran = async () => {
-      const { data } = await supabase.from('iuran_kas').select('jumlah');
-      if (data) {
-        setTotalSaldoAllTime(data.reduce((acc, item) => acc + (item.jumlah || 0), 0));
+    const checkAuthAndInitData = async () => {
+      try {
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+
+        if (!session || authError) {
+          router.push('/');
+          return; 
+        }
+
+        // Jalankan fetch awal tanpa menghentikan flow jika ada error di salah satu fetch
+        fetchRiwayatPengeluaran(false);
+        
+        const { data: iuranData, error: iuranError } = await supabase.from('iuran_kas').select('jumlah');
+        if (iuranError) {
+          console.error("Gagal init total iuran:", iuranError.message);
+        } else if (iuranData) {
+          setTotalSaldoAllTime(iuranData.reduce((acc, item) => acc + (item.jumlah || 0), 0));
+        }
+
+      } catch (err) {
+        console.error("Sistem gagal inisialisasi:", err.message);
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
-    initSaldoIuran();
-  }, []);
 
+    checkAuthAndInitData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
+
+  // ==========================================
+  // AUTO LOGOUT JIKA IDLE (TIDAK AKTIF 5 MENIT)
+  // ==========================================
+  useEffect(() => {
+    let timeoutId;
+    
+    // 5 menit dalam milidetik
+    const IDLE_TIMEOUT = 5 * 60 * 1000; 
+
+    const handleIdleLogout = async () => {
+      try {
+        alert("Sesi Anda telah berakhir karena tidak ada aktivitas. Silakan login kembali.");
+        await supabase.auth.signOut();
+        router.push('/');
+      } catch (err) {
+        console.error("Error idle logout:", err);
+      }
+    };
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleIdleLogout, IDLE_TIMEOUT);
+    };
+
+    const events = [
+      'mousemove', 
+      'keydown', 
+      'wheel', 
+      'DOMMouseScroll', 
+      'mouseWheel', 
+      'mousedown', 
+      'touchstart', 
+      'touchmove'
+    ];
+
+    if (!isCheckingAuth) {
+      events.forEach((event) => {
+        window.addEventListener(event, resetTimer);
+      });
+      resetTimer();
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach((event) => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
+  }, [isCheckingAuth, router]); 
 
   // ==========================================
   // RENDER UI BERDASARKAN KOMPONEN
   // ==========================================
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center text-gray-600 font-semibold animate-pulse">
+          Memeriksa otorisasi...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-2 sm:p-4 md:p-8 print:p-0 print:bg-white">
       
@@ -202,7 +356,7 @@ export default function DashboardKetua() {
 
       {activeView === 'buat_surat' && (
         <BuatSuratView
-          activeView={activeView}     // <-- KINI MASUK KE SINI DENGAN AMAN
+          activeView={activeView}     
           setActiveView={setActiveView}
           dataWarga={dataWarga}
           riwayatSurat={riwayatSurat}
