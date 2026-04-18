@@ -9,6 +9,8 @@ export default function MainMenu({
   goToBuatSurat,
   fetchUsulan,
   fetchRiwayatIuran,
+  fetchAkunPending, 
+  akunPending,
   setActiveView
 }) {
   // State untuk mengontrol tampilan sub-menu
@@ -104,6 +106,23 @@ export default function MainMenu({
             </button>
           </>
         )}
+
+        {/* 7. Verifikasi Akun */}
+            <button onClick={fetchAkunPending} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-400 hover:shadow-md hover:-translate-y-1 transition-all text-left group relative">
+              <h3 className="font-bold text-lg text-yellow-600 mb-2 flex items-center justify-between">
+                <span>7. Verifikasi Akun Baru</span>
+                <span className="text-gray-300 group-hover:text-yellow-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Terima (ACC) pendaftaran akun warga baru agar bisa login.</p>
+              
+              {/* Notifikasi Badge Merah jika ada yang pending */}
+              {akunPending && akunPending.length > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-black w-6 h-6 rounded-full flex items-center justify-center shadow-md animate-pulse">
+                  {akunPending.length}
+                </div>
+              )}
+            </button>
+
 
         {/* SUB-MENU: KEUANGAN RT */}
         {subMenu === 'keuangan' && (

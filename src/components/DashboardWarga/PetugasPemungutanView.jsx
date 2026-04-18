@@ -1,8 +1,10 @@
 // File: src/components/DashboardWarga/PetugasPemungutanView.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 export default function PetugasPemungutanView({ wargaAktif }) {
+  const supabase = getSupabaseClient();
   const [dataWargaGlobal, setDataWargaGlobal] = useState([]);
   const [listRiwayatIuran, setListRiwayatIuran] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);

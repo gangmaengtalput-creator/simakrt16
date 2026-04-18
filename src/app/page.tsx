@@ -1,45 +1,68 @@
+// File: src/app/page.tsx
 "use client";
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient'; 
+import { getSupabaseClient } from '../lib/supabaseClient'; 
 
 export default function Home() {
+  // PERBAIKAN 1: Inisialisasi Supabase dilakukan di tingkat komponen, bukan di dalam useEffect
+  const supabase = getSupabaseClient();
+  
   const [usulanTerbaru, setUsulanTerbaru] = useState<any[]>([]);
   const [isLoadingUsulan, setIsLoadingUsulan] = useState(true);
 
   useEffect(() => {
+    const fetchUsulanTerbaru = async () => {
+      setIsLoadingUsulan(true);
+      try {
+        const { data, error } = await supabase
+          .from('usulan_warga')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(8); 
+          
+        if (error) {
+          console.error('Supabase Error:', error);
+          throw error;
+        }
+        
+        if (data) {
+          console.log('Data Usulan berhasil ditarik:', data);
+          setUsulanTerbaru(data);
+        }
+      } catch (err: any) {
+        console.error('Gagal mengambil data usulan:', err.message || JSON.stringify(err));
+      } finally {
+        setIsLoadingUsulan(false);
+      }
+    };
+
     fetchUsulanTerbaru();
-  }, []);
+  }, []); // Dipanggil 1x saat komponen dimuat
 
-  const fetchUsulanTerbaru = async () => {
-    const { data, error } = await supabase
-      .from('usulan_warga')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(8); 
-      
-    if (!error && data) {
-      setUsulanTerbaru(data);
-    }
-    setIsLoadingUsulan(false);
-  };
-
+  // PERBAIKAN 2: Logika Parsing Foto yang Jauh Lebih Aman (Kebal Crash)
   const getFotoWarga = (fotoData: any) => {
     if (!fotoData) return 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
-    let parsedArray = [];
-    if (Array.isArray(fotoData)) {
-      parsedArray = fotoData;
-    } else {
-      try {
-        const parsed = JSON.parse(fotoData);
-        parsedArray = Array.isArray(parsed) ? parsed : [];
-      } catch (e) {
-        parsedArray = typeof fotoData === 'string' ? [fotoData] : [];
+    
+    if (typeof fotoData === 'string') {
+      if (fotoData.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(fotoData);
+          return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
+        } catch (e) {
+          return fotoData; // Fallback jika string biasa tapi kebetulan ada karakter [
+        }
       }
+      return fotoData;
     }
-    return parsedArray.length > 0 ? parsedArray[0] : 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
+    
+    if (Array.isArray(fotoData) && fotoData.length > 0) {
+      return fotoData[0];
+    }
+    
+    return 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto';
   };
 
   return (
@@ -77,14 +100,12 @@ export default function Home() {
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1">
         
-        {/* 1. HERO SECTION DENGAN LOGO DI TENGAH */}
+        {/* 1. HERO SECTION */}
         <div className="bg-gradient-to-b from-blue-50 to-white py-16 sm:py-24 relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             
-            {/* LOGO RT BESAR DI TENGAH */}
             <div className="flex justify-center mb-8 animate-fade-in-up">
               <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-white shadow-2xl p-2 border-4 border-white ring-4 ring-blue-50">
-                {/* GANTI NAMA FILE DI BAWAH INI JIKA ADA LOGO BULAT KHUSUS */}
                 <img 
                   src="/logo_garuda.jpeg" 
                   alt="Logo Besar RT 16" 
@@ -137,10 +158,10 @@ export default function Home() {
                         onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x250?text=Gambar+Rusak' }}
                       />
                       <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[10px] px-3 py-1.5 rounded-full font-bold tracking-wider uppercase shadow-md">
-                        {usulan.jenis_usulan}
+                        {usulan.jenis_usulan || 'Umum'}
                       </div>
                       <div className={`absolute top-3 right-3 text-[10px] px-3 py-1.5 rounded-full font-bold shadow-md text-white ${usulan.status === 'Telah Ditindaklanjuti' ? 'bg-green-500' : usulan.status === 'Ditolak' ? 'bg-red-500' : 'bg-yellow-500'}`}>
-                        {usulan.status}
+                        {usulan.status || 'Menunggu'}
                       </div>
                     </div>
                     
@@ -148,24 +169,24 @@ export default function Home() {
                     <div className="p-5 flex flex-col flex-1">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-semibold text-gray-500">
-                          {new Date(usulan.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {usulan.created_at ? new Date(usulan.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                         </span>
                         <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                          Oleh: {usulan.nama_pengusul.split(' ')[0]}
+                          Oleh: {usulan.nama_pengusul ? String(usulan.nama_pengusul).split(' ')[0] : 'Warga'}
                         </span>
                       </div>
                       
                       <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight line-clamp-1">
-                        {usulan.nama_usulan || `Usulan ${usulan.jenis_usulan}`}
+                        {usulan.nama_usulan || `Usulan Warga`}
                       </h3>
                       
                       <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                        {usulan.keterangan}
+                        {usulan.keterangan || 'Tidak ada keterangan tambahan.'}
                       </p>
                       
                       {/* MANAJEMEN USULAN (TANGGAPAN KETUA RT) */}
                       <div className="mt-auto pt-4 border-t border-gray-100">
-                        {usulan.status === 'Menunggu Tinjauan RT' ? (
+                        {usulan.status === 'Menunggu Tinjauan RT' || !usulan.status ? (
                            <div className="text-center py-2 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                              <span className="text-xs font-bold text-gray-400">⏳ Menunggu Respon Ketua RT</span>
                            </div>
@@ -179,15 +200,16 @@ export default function Home() {
                                {usulan.catatan_rt ? `"${usulan.catatan_rt}"` : "Status usulan telah diperbarui."}
                              </p>
 
-                             {usulan.foto_tindak_lanjut && (
+                             {/* PERBAIKAN 3: Memastikan foto tanggapan RT diparsing dengan benar agar tidak merusak UI */}
+                             {usulan.foto_tindak_lanjut && getFotoWarga(usulan.foto_tindak_lanjut) !== 'https://via.placeholder.com/400x250?text=Tidak+Ada+Foto' && (
                                <div className="flex items-center gap-3 bg-white p-1.5 rounded-lg border border-green-100 shadow-sm">
                                  <img 
-                                   src={usulan.foto_tindak_lanjut} 
+                                   src={getFotoWarga(usulan.foto_tindak_lanjut)} 
                                    className="w-10 h-10 object-cover rounded" 
-                                   alt="Foto RT" 
+                                   alt="Foto Tindak Lanjut" 
                                    onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/50?text=Error' }}
                                  />
-                                 <a href={usulan.foto_tindak_lanjut} target="_blank" rel="noreferrer" className="text-[10px] text-green-700 font-bold hover:underline flex-1">
+                                 <a href={getFotoWarga(usulan.foto_tindak_lanjut)} target="_blank" rel="noreferrer" className="text-[10px] text-green-700 font-bold hover:underline flex-1">
                                    Lihat Foto Bukti RT &rarr;
                                  </a>
                                </div>

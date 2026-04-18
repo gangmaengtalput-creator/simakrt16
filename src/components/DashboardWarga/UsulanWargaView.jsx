@@ -1,6 +1,7 @@
 // File: src/components/DashboardWarga/UsulanWargaView.jsx
 import React, { useState, useRef } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 export default function UsulanWargaView({ 
   wargaAktif, 
@@ -8,6 +9,7 @@ export default function UsulanWargaView({
   fetchDataWarga, 
   setActiveTab 
 }) {
+  const supabase = getSupabaseClient();
   const fileInputRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fotos, setFotos] = useState([]);

@@ -1,6 +1,6 @@
 // File: src/components/DashboardKetua/ManajemenUsulanView.jsx
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function ManajemenUsulanView({ 
   setActiveView, 
@@ -10,6 +10,7 @@ export default function ManajemenUsulanView({
   // ==========================================
   // STATE LOKAL (Hanya untuk fitur Usulan)
   // ==========================================
+  const supabase = getSupabaseClient();
   const [showUsulanModal, setShowUsulanModal] = useState(false);
   const [selectedUsulan, setSelectedUsulan] = useState(null);
   const [tindakLanjutData, setTindakLanjutData] = useState({ status: '', catatan_rt: '' });

@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+// PERBAIKAN 1: Impor getSupabaseClient, bukan supabase langsung
+import { getSupabaseClient } from '../../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
 // === IMPORT KOMPONEN YANG TELAH DIPECAH ===
@@ -15,6 +16,9 @@ export const dynamic = 'force-dynamic';
 
 export default function DashboardWarga() {
   const router = useRouter();
+  
+  // PERBAIKAN 2: Inisialisasi supabase client di dalam komponen
+  const supabase = getSupabaseClient();
   
   // ==========================================
   // STATE KEAMANAN & AUTENTIKASI AWAL
@@ -56,7 +60,7 @@ export default function DashboardWarga() {
     } catch (err) {
       console.error("Logout Error:", err);
     }
-  }, [router]);
+  }, [router, supabase]);
 
   const handleErrorModalClose = async () => {
     if (errorModal.type === 'FATAL') {
@@ -85,7 +89,7 @@ export default function DashboardWarga() {
       }
     };
     checkAuth();
-  }, [router]);
+  }, [router, supabase]);
 
   // ==========================================
   // EFFECT 2: AUTO LOGOUT (IDLE 5 MENIT)

@@ -1,6 +1,7 @@
 // File: src/components/DashboardWarga/PermintaanSuratView.jsx
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 export default function PermintaanSuratView({ 
   wargaAktif, 
@@ -9,6 +10,7 @@ export default function PermintaanSuratView({
   cetakSurat, // Pastikan prop ini diterima dari Parent component
   setCetakSurat 
 }) {
+  const supabase = getSupabaseClient();
   const [formSurat, setFormSurat] = useState({ tujuan: '', keterangan: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [modalInfo, setModalInfo] = useState({ open: false, message: '', type: 'success' }); 
@@ -29,8 +31,8 @@ export default function PermintaanSuratView({
     if (!error) {
       // 2. KIRIM NOTIFIKASI EMAIL KE BELAKANG LAYAR (Background)
       const dataNotif = {
-        nama: wargaAktif.nama, nik: wargaAktif.nik,
-        keperluan: formSurat.tujuan, keterangan: formSurat.keterangan
+        nama: wargaAktif.nama, 
+        pesan: `Permintaan Surat Pengantar Baru!\n\nNIK: ${wargaAktif.nik}\nKeperluan: ${formSurat.tujuan}\nKeterangan Tambahan: ${formSurat.keterangan}\n\nSilakan cek Dashboard Ketua RT untuk memprosesnya.`
       };
 
       try {

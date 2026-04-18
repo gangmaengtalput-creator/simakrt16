@@ -1,7 +1,8 @@
 // File: src/components/DashboardKetua/LaporanView.jsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
+const supabase = getSupabaseClient();
 // --- Konstanta Label Array ---
 const arrEtnis = ['Aceh','Batak','Nias','Jawa','Banten','Cirebon','Betawi','Sunda','Bali','Ambon','Flores','Papua','Samawa','Melayu/Palembang','Minangkabau','Afrika','Australia','China','Amerika','Eropa','Arab','Lainnya'];
 const arrFisik = ['Tuna Rungu','Tuna Wicara','Tuna Netra','Lumpuh','Sumbing','Cacat Kulit','Cacat Fisik Lainnya'];

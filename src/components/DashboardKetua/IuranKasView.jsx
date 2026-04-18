@@ -1,6 +1,6 @@
 // File: src/components/DashboardKetua/IuranKasView.jsx
 import React, { useState, useMemo } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function IuranKasView({
   setActiveView,
@@ -12,6 +12,7 @@ export default function IuranKasView({
   // ==========================================
   // STATE LOKAL KHUSUS IURAN
   // ==========================================
+  const supabase = getSupabaseClient();
   const namaBulanSekarang = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date());
   const tahunSekarang = new Date().getFullYear();
 

@@ -1,6 +1,6 @@
 // File: src/components/DashboardKetua/PermintaanMasukView.jsx
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function PermintaanMasukView({ 
   setActiveView, 
@@ -10,27 +10,53 @@ export default function PermintaanMasukView({
   isLoading
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const supabase = getSupabaseClient();
 
   // ==========================================
   // FUNGSI LOKAL (TOLAK & HAPUS LOG)
   // ==========================================
-  const tolakPermintaan = async (id) => {
+  const tolakPermintaan = async (item) => {
     const alasan = prompt("Masukkan alasan penolakan:");
     if (!alasan) return;
     
     setIsProcessing(true);
+    
+    // 1. Ubah status di database
     const { error } = await supabase
       .from('permintaan_surat')
       .update({ status: 'Ditolak', keterangan: `Ditolak: ${alasan}` })
-      .eq('id', id);
+      .eq('id', item.id);
       
-    setIsProcessing(false);
-    
     if (!error) {
-      fetchPermintaanMasuk();
+      fetchPermintaanMasuk(); // Refresh tabel
+
+      // 2. Cari Email Warga (karena di permintaan_surat hanya ada NIK)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('nik', item.nik_pemohon)
+        .single();
+
+      // 3. Tembak API Email secara Background
+      if (profile?.email) {
+        fetch('/api/notify-warga', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailTujuan: profile.email,
+            nama: item.nama_pemohon,
+            status: 'Ditolak',
+            tujuan: item.tujuan,
+            catatan: alasan
+          })
+        }).catch(err => console.error("Gagal kirim email penolakan:", err));
+      }
+
     } else {
       alert("Gagal menolak permintaan: " + error.message);
     }
+    
+    setIsProcessing(false);
   };
 
   const hapusLogPermintaan = async (id) => {
@@ -103,7 +129,7 @@ export default function PermintaanMasukView({
                           Proses Buat Surat
                         </button>
                         <button 
-                          onClick={() => tolakPermintaan(item.id)} 
+                          onClick={() => tolakPermintaan(item)} 
                           disabled={isProcessing}
                           className="bg-red-100 text-red-700 px-3 py-1.5 rounded font-bold text-xs hover:bg-red-200 disabled:opacity-50"
                         >

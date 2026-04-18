@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabaseClient';
+import { getSupabaseClient } from '../../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
 import MainMenu from '../../../components/DashboardKetua/MainMenu';
@@ -14,16 +14,19 @@ import PermintaanMasukView from '../../../components/DashboardKetua/PermintaanMa
 import BuatSuratView from '../../../components/DashboardKetua/BuatSuratView';
 import PenunjukanPetugasView from '../../../components/DashboardKetua/PenunjukanPetugasView';
 import LaporanView from '../../../components/DashboardKetua/LaporanView';
+import VerifikasiAkunView from '../../../components/DashboardKetua/VerifikasiAkunView';
 
 export const dynamic = 'force-dynamic';
 
 export default function DashboardKetua() {
   const router = useRouter();
+  const supabase = getSupabaseClient();
   
   // ==========================================
   // STATE GLOBAL UTAMA
   // ==========================================
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [akunPending, setAkunPending] = useState([]);
 
   const [activeView, setActiveView] = useState('menu'); 
   const [isLoading, setIsLoading] = useState(false);
@@ -171,6 +174,21 @@ export default function DashboardKetua() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchAkunPending = async () => {
+  setActiveView('verifikasi_akun');
+  setIsLoading(true);
+  try {
+    // Mengambil akun yang statusnya masih 'pending'
+    const { data, error } = await supabase.from('profiles').select('*').eq('status', 'pending');
+    if (error) throw error;
+    if (data) setAkunPending(data);
+  } catch (err) {
+    console.error("Error fetch pending:", err.message);
+  } finally {
+    setIsLoading(false);
+  }
   };
 
   const goToBuatSurat = () => {
@@ -333,6 +351,8 @@ export default function DashboardKetua() {
           fetchUsulan={fetchUsulan}
           fetchRiwayatIuran={fetchRiwayatIuran}
           setActiveView={setActiveView}
+          fetchAkunPending={fetchAkunPending}
+          akunPending={akunPending}
         />
       )}
 
@@ -408,6 +428,14 @@ export default function DashboardKetua() {
         <LaporanView 
           setActiveView={setActiveView} 
           dataWarga={dataWarga} 
+        />
+      )}
+
+      {activeView === 'verifikasi_akun' && (
+        <VerifikasiAkunView 
+          setActiveView={setActiveView} 
+          akunPending={akunPending} 
+          fetchAkunPending={fetchAkunPending} 
         />
       )}
 

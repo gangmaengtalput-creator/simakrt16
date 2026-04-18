@@ -3,12 +3,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 export async function middleware(request) {
-  // 1. Inisialisasi response awal Next.js
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let response = NextResponse.next({ request })
+  const { pathname } = request.nextUrl
 
-  // 2. Buat Supabase Client khusus untuk Server/Middleware
+  // 1. Inisialisasi Supabase Client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -18,34 +16,64 @@ export async function middleware(request) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           )
         },
       },
     }
   )
 
-  // 3. Ambil data user dari sesi (berdasarkan Cookies)
-  const { data: { user } } = await supabase.auth.getUser()
-  const path = request.nextUrl.pathname
+  // 2. Ambil User Sesi Saat Ini
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
 
-  // 4. LOGIKA KEAMANAN 1: Cek Status Login
-  if (!user && path.startsWith('/dashboard')) {
-    // Jika belum login, tendang ke halaman login
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
-  }
+  // ===== PROTEKSI HALAMAN DASHBOARD =====
+  if (pathname.startsWith('/dashboard')) {
+    
+    // Jika tidak ada user -> Tendang ke Login
+    if (!user || authError) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
 
-  // 5. LOGIKA KEAMANAN 2: Cek Role / Jabatan (Jika sudah login)
-  if (user && path.startsWith('/dashboard')) {
-    // Ambil role user dari tabel profiles
-    const { data: profile } = await supabase
+    // ==========================================
+    // 🔒 AUTO-LOGOUT CHECK (INACTIVITY 5 MENIT)
+    // ==========================================
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    const now = Date.now();
+    const lastActiveCookie = request.cookies.get('last_active')?.value;
+
+    if (lastActiveCookie) {
+      const timeElapsed = now - parseInt(lastActiveCookie, 10);
+      if (timeElapsed > FIVE_MINUTES) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('expired', 'true');
+        const redirectResponse = NextResponse.redirect(url);
+        redirectResponse.cookies.delete('last_active');
+        return redirectResponse;
+      }
+    }
+
+    // Perbarui waktu aktif (agar tidak logout jika user masih nge-klik)
+    response.cookies.set('last_active', now.toString(), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    // ==========================================
+
+    // ==========================================
+    // 🔑 AMBIL ROLE DARI TABEL PROFILES (PENTING!)
+    // ==========================================
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -53,29 +81,49 @@ export async function middleware(request) {
 
     const role = profile?.role
 
-    // Skenario A: Ketua RT mencoba masuk ke dashboard warga
-    if (role === 'ketua_rt' && path.startsWith('/dashboard/warga')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard/ketua' // Kembalikan ke habitatnya
-      return NextResponse.redirect(url)
+    // CCTV Debugging: Cek di Terminal VS Code Anda!
+    console.log("=== DEBUG MIDDLEWARE ===");
+    console.log("User ID:", user.id);
+    console.log("Role di Database:", role);
+    if (profileError) console.error("Error baca profile:", profileError.message);
+
+    // Default ke warga jika belum ada role
+    if (!role) {
+      console.warn('User tanpa role terdeteksi, diarahkan ke warga.');
+      if (!pathname.startsWith('/dashboard/warga')) {
+        return NextResponse.redirect(new URL('/dashboard/warga', request.url))
+      }
     }
 
-    // Skenario B: Warga biasa mencoba masuk ke dashboard ketua RT
-    if (role !== 'ketua_rt' && path.startsWith('/dashboard/ketua')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard/warga' // Kembalikan ke habitatnya
-      return NextResponse.redirect(url)
+    // Skenario A: Ketua RT nyasar ke dashboard warga -> Kembalikan ke Ketua
+    if (role === 'ketua_rt' && pathname.startsWith('/dashboard/warga')) {
+      return NextResponse.redirect(new URL('/dashboard/ketua', request.url))
+    }
+
+    // Skenario B: Warga biasa mencoba masuk ke dashboard ketua -> Usir ke Warga
+    if (role !== 'ketua_rt' && pathname.startsWith('/dashboard/ketua')) {
+      return NextResponse.redirect(new URL('/dashboard/warga', request.url))
     }
   }
 
-  // Jika semua pengecekan aman, izinkan masuk ke halaman yang dituju
-  return supabaseResponse
+  // ===== REDIRECT PINTAR DARI HALAMAN DEPAN (/) =====
+  if (pathname === '/' && user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role === 'ketua_rt') {
+      return NextResponse.redirect(new URL('/dashboard/ketua', request.url))
+    } else {
+      return NextResponse.redirect(new URL('/dashboard/warga', request.url))
+    }
+  }
+
+  return response
 }
 
-// MATCHER: Tentukan rute mana saja yang akan dijaga oleh Satpam (Middleware) ini
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/', '/dashboard/:path*'],
 }

@@ -1,11 +1,13 @@
 // File: src/components/DashboardKetua/DataWargaView.jsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 // --- Konstanta Label Etnis (Sama dengan Laporan Triwulan) ---
 const arrEtnis = ['Aceh','Batak','Nias','Jawa','Banten','Cirebon','Betawi','Sunda','Bali','Ambon','Flores','Papua','Samawa','Melayu/Palembang','Minangkabau','Afrika','Australia','China','Amerika','Eropa','Arab','Lainnya'];
 
 export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) {
+
+  const supabase = getSupabaseClient();
   // ==========================================
   // 1. STATE LOKAL KHUSUS WARGA
   // ==========================================

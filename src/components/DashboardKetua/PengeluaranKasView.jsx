@@ -1,12 +1,13 @@
 // File: src/components/DashboardKetua/PengeluaranKasView.jsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function PengeluaranKasView({ 
   setActiveView, 
   listRiwayatPengeluaran, 
   fetchRiwayatPengeluaran 
 }) {
+  const supabase = getSupabaseClient();
   const namaBulanSekarang = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date());
   const tahunSekarang = new Date().getFullYear();
 

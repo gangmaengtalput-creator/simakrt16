@@ -1,6 +1,6 @@
 // File: src/components/DashboardKetua/BuatSuratView.jsx
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function BuatSuratView({
   activeView,
@@ -15,18 +15,13 @@ export default function BuatSuratView({
   permintaanAktifId, setPermintaanAktifId,
   fetchPermintaanMasuk
 }) {
-  // ==========================================
-  // STATE LOKAL
-  // ==========================================
+  const supabase = getSupabaseClient();
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedSurat, setSelectedSurat] = useState(null);
   const [showSuratModal, setShowSuratModal] = useState({ edit: false, delete: false });
   const [editSuratData, setEditSuratData] = useState({});
 
-  // ==========================================
-  // FUNGSI LOGIKA SURAT
-  // ==========================================
   const cariWargaSurat = async (e) => {
     e.preventDefault(); 
     setIsLoading(true); 
@@ -64,7 +59,6 @@ export default function BuatSuratView({
     const romanMonth = romanMonths[month];
 
     const { data: lastSurat } = await supabase.from('surat_keterangan').select('nomor_urut').eq('tahun', year).order('nomor_urut', { ascending: false }).limit(1);
-    
     let nextUrut = 1; 
     if (lastSurat && lastSurat.length > 0) nextUrut = lastSurat[0].nomor_urut + 1;
     
@@ -82,15 +76,171 @@ export default function BuatSuratView({
 
     if (!error && newSuratData) { 
       if (permintaanAktifId) {
-        const { error: updateError } = await supabase.from('permintaan_surat').update({
+        await supabase.from('permintaan_surat').update({
           status: 'Selesai',
           surat_keterangan_id: newSuratData.id
         }).eq('id', permintaanAktifId);
         
-        if (updateError) {
-          alert("Surat dibuat, tapi gagal memperbarui status permintaan: " + updateError.message);
-        } else {
-          fetchPermintaanMasuk(); 
+        fetchPermintaanMasuk(); 
+
+        try {
+          const { data: profile } = await supabase.from('profiles').select('email').eq('nik', wargaSurat?.nik).single();
+
+          if (profile?.email) {
+            const baseUrl = window.location.origin;
+            const logoUrl = `${baseUrl}/logo-palembang.png`;
+            const ttdUrl = `${baseUrl}/ttd-guntur.png`;
+
+            const formatTglLahir = (tgl) => {
+              if (!tgl) return '-';
+              const [y, m, d] = tgl.split('-');
+              return `${d}/${m}/${y}`;
+            };
+
+            const tglLahirIndo = formatTglLahir(wargaSurat?.tgl_lahir);
+            const pbbTahun = date.getFullYear();
+
+            // MURNI TIDAK DIUBAH (HANYA EFEK MENGGORES DI TTD)
+            const htmlDokumenSurat = `
+              <!DOCTYPE html>
+              <html lang="id">
+              <head>
+                <meta charset="UTF-8">
+                <style>
+                  @page { size: A4 portrait; margin: 1.5cm 2cm; }
+                </style>
+              </head>
+              <body style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.2; color: black; margin: 0; padding: 0;">
+                
+                <table width="100%" style="width: 100%; border-bottom: 3px solid black; margin-bottom: 15px; border-collapse: collapse;">
+                  <tr>
+                    <td width="15%" align="left" style="width: 15%; text-align: left; vertical-align: middle; padding-bottom: 5px;">
+                      <img src="${logoUrl}" style="width: 80px; height: auto;" alt="Logo" onerror="this.style.display='none'">
+                    </td>
+                    <td width="70%" align="center" style="width: 70%; text-align: center; vertical-align: middle; padding-bottom: 5px; white-space: nowrap;">
+                      <h2 style="margin: 0; font-size: 13.5pt; font-weight: bold; text-transform: uppercase; text-align: center;">PEMERINTAH KOTA PALEMBANG</h2>
+                      <h2 style="margin: 0; font-size: 13.5pt; font-weight: bold; text-transform: uppercase; text-align: center;">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                      <h1 style="margin: 2px 0; font-size: 15pt; font-weight: bold; text-transform: uppercase; text-align: center;">KETUA RT.16 RW.04</h1>
+                      <p style="margin: 0; font-size: 10.5pt; text-align: center;">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                    </td>
+                    <td width="15%" style="width: 15%; padding-bottom: 5px;"></td>
+                  </tr>
+                </table>
+
+                <div align="center" style="text-align: center; margin-bottom: 15px;">
+                  <p align="center" style="font-size: 12pt; font-weight: bold; text-decoration: underline; margin: 0; text-align: center;">SURAT KETERANGAN</p>
+                  <p align="center" style="font-size: 12pt; margin: 2px 0 0 0; text-align: center;">Nomor : ${nomorSuratBaru}</p>
+                </div>
+
+                <p style="margin: 0 0 8px 0; text-align: justify;">Yang bertanda tangan dibawah ini : </p>
+                <table width="100%" style="width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed;">
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Nama</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;<b>GUNTUR BAYU JANTORO</b></td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Jabatan</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;Ketua RT.16</td>
+                  </tr>
+                </table>
+
+                <p style="margin: 0 0 8px 0; text-align: justify;">Dengan ini menerangkan bahwa : </p>
+                <table width="100%" style="width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed;">
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Nama</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top; text-transform: uppercase;">&nbsp;&nbsp;${wargaSurat?.nama || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">NIK</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;${wargaSurat?.nik || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Jenis Kelamin</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;${(wargaSurat?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Tempat/Tgl. Lahir</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;${wargaSurat?.tempat_lahir || '-'} / ${tglLahirIndo}</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Bangsa/Agama</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;Indonesia / ${wargaSurat?.agama || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Pekerjaan</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top; text-transform: capitalize;">&nbsp;&nbsp;${wargaSurat?.pekerjaan || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Alamat</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;${wargaSurat?.alamat || '-'}<br>&nbsp;&nbsp;RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td>
+                  </tr>
+                  <tr>
+                    <td width="170" style="width: 170px; padding: 1.5px 0; vertical-align: top;">Kartu Keluarga No</td>
+                    <td width="20" align="center" style="width: 20px; text-align: center; padding: 1.5px 0; vertical-align: top;">:</td>
+                    <td style="padding: 1.5px 0; vertical-align: top;">&nbsp;&nbsp;${wargaSurat?.no_kk || '-'}</td>
+                  </tr>
+                </table>
+
+                <p style="margin: 0 0 8px 0; text-align: justify;">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas ${suratFormData.deskripsi}</p>
+                
+                <p style="margin: 0 0 8px 0; text-align: left;">Surat Keterangan ini diberikan untuk : ${suratFormData.tujuan_surat}</p>
+                
+                <p style="margin: 0 0 8px 0; text-align: justify;">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+
+                <table width="100%" style="width: 100%; margin-top: 15px; border-collapse: collapse; page-break-inside: avoid;">
+                  <tr>
+                    <td width="50%" style="width: 50%;"></td>
+                    <td width="50%" align="center" style="width: 50%; text-align: center;">Palembang, ${date.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="text-align: center;"><br>Mengetahui,<br>Ketua RW.04</td>
+                    <td align="center" style="text-align: center;"><br><br>Ketua RT.16</td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="height: 95px; text-align: center; vertical-align: bottom;">
+                      <span style="font-weight: bold; text-decoration: underline; text-transform: uppercase;">HERIYANSAH</span>
+                    </td>
+                    <td align="center" style="height: 95px; position: relative; text-align: center; vertical-align: bottom;">
+                      <img src="${ttdUrl}" style="position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); width: 150px; z-index: 10; mix-blend-mode: multiply;" alt="TTD" onerror="this.style.display='none'">
+                      <span style="font-weight: bold; text-decoration: underline; text-transform: uppercase; position: relative; z-index: 1;">GUNTUR BAYU JANTORO</span>
+                    </td>
+                  </tr>
+                </table>
+
+                <div style="margin-top: 15px;">
+                  <p style="margin: 0;">Catatan : </p>
+                  <p style="margin: 0;">PBB Tahun ${pbbTahun}</p>
+                  <p style="margin: 0;">${suratFormData.pbb || 'Lunas/Belum Lunas/Tidak Terbit'}</p>
+                </div>
+
+              </body>
+              </html>
+            `;
+
+            fetch('/api/notify-warga', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                emailTujuan: profile.email,
+                nama: wargaSurat?.nama,
+                status: 'Selesai',
+                nomorSurat: nomorSuratBaru,
+                tujuan: suratFormData.tujuan_surat,
+                htmlSurat: htmlDokumenSurat 
+              })
+            }).catch(err => console.error("Gagal kirim notifikasi PDF:", err));
+          }
+        } catch (err) {
+          console.error("Error proses notifikasi:", err);
         }
       }
 
@@ -153,9 +303,12 @@ export default function BuatSuratView({
     else alert(error.message); 
   };
 
-  // ==========================================
-  // TAMPILAN UI
-  // ==========================================
+  const formatTglLahirLayar = (tgl) => {
+    if (!tgl) return '-';
+    const [y, m, d] = tgl.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
   return (
     <div className="max-w-5xl mx-auto print:font-serif">
       <div className="mb-4 print:hidden flex gap-2 sticky top-4 z-50">
@@ -174,7 +327,6 @@ export default function BuatSuratView({
 
       {!cetakSurat && (
         <>
-          {/* Form Generator Surat */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden mb-8 border-2 border-green-500">
             <div className="bg-green-600 p-4 flex justify-between items-center break-inside-avoid">
               <h2 className="text-lg sm:text-xl font-bold text-white">Generator Surat Keterangan</h2>
@@ -201,7 +353,7 @@ export default function BuatSuratView({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 text-xs sm:text-sm">
                       <div className="text-gray-500">Nama: <span className="font-bold text-gray-800">{wargaSurat?.nama || '-'}</span></div>
                       <div className="text-gray-500">NIK: <span className="font-bold text-gray-800">{wargaSurat?.nik || '-'}</span></div>
-                      <div className="text-gray-500">TTL: <span className="font-bold text-gray-800">{wargaSurat?.tempat_lahir || '-'}, {wargaSurat?.tgl_lahir || '-'}</span></div>
+                      <div className="text-gray-500">TTL: <span className="font-bold text-gray-800">{wargaSurat?.tempat_lahir || '-'}, {formatTglLahirLayar(wargaSurat?.tgl_lahir)}</span></div>
                       <div className="text-gray-500">Pekerjaan: <span className="font-bold text-gray-800">{wargaSurat?.pekerjaan || '-'}</span></div>
                     </div>
                   </div>
@@ -242,7 +394,6 @@ export default function BuatSuratView({
             </div>
           </div>
 
-          {/* Tabel Riwayat Arsip Surat */}
           {!permintaanAktifId && (
             <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden">
               <div className="bg-gray-800 p-4 flex justify-between items-center break-inside-avoid">
@@ -287,7 +438,6 @@ export default function BuatSuratView({
         </>
       )}
 
-      {/* PRINT PREVIEW SURAT FORMAT RESMI KELURAHAN */}
       {cetakSurat && (
         <div className="print-container m-0 p-0 shadow-none">
           <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-800 p-4 rounded-lg print:hidden sticky top-4 z-50">
@@ -312,92 +462,136 @@ export default function BuatSuratView({
 
           <div className="w-full overflow-x-hidden sm:overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-transparent print:p-0 flex justify-center">
             
-            {/* KERTAS A4 - RESPONSIVE DI HP, KAKU SAAT PRINT/DESKTOP */}
             <div 
-              className="bg-white shadow-2xl print:shadow-none font-serif text-sm sm:text-[12pt] print:text-[12pt] leading-snug text-justify text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:h-[297mm] p-4 sm:p-[1.5cm_2cm] print:p-[1.5cm_2cm] box-border mx-auto"
+              className="bg-white shadow-2xl print:shadow-none font-serif text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:min-h-[297mm] box-border mx-auto"
+              style={{ padding: '1.5cm 2cm', fontSize: '12pt', lineHeight: '1.2' }}
             >
               
-              {/* --- KOP SURAT --- */}
-              <div className="relative border-b-[3px] border-black pb-2 mb-4 flex justify-center items-center">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2">
-                  <img src="/logo-palembang.png" alt="Logo Palembang" className="w-14 h-14 sm:w-24 sm:h-24 print:w-24 print:h-24 object-contain" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
-                </div>
-                <div className="w-full text-center pl-16 sm:pl-8 print:pl-8">
-                  <h2 className="text-[11pt] sm:text-[14pt] print:text-[14pt] font-bold uppercase leading-tight">PEMERINTAH KOTA PALEMBANG</h2>
-                  <h2 className="text-[11pt] sm:text-[14pt] print:text-[14pt] font-bold uppercase leading-tight whitespace-normal sm:whitespace-nowrap print:whitespace-nowrap">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
-                  <h1 className="text-[12pt] sm:text-[14pt] print:text-[14pt] font-bold uppercase leading-tight mt-1">KETUA RT.16 RW.04</h1>
-                  <p className="text-[9pt] sm:text-[11pt] print:text-[11pt] mt-1 leading-tight">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
-                </div>
-              </div>
-
-              {/* --- JUDUL SURAT --- */}
-              <div className="text-center mb-5 break-inside-avoid">
-                <h1 className="font-bold text-base sm:text-[14pt] print:text-[14pt] underline tracking-wide uppercase">SURAT KETERANGAN</h1>
-                <p className="text-sm sm:text-[12pt] print:text-[12pt] mt-1">Nomor : {cetakSurat?.nomorSurat}</p>
-              </div>
-
-              {/* --- ISI SURAT --- */}
-              <p className="mb-2 text-left">Yang bertanda tangan dibawah ini :</p>
-              <table className="mb-3 ml-0 sm:ml-4 print:ml-4 leading-snug break-inside-avoid w-full sm:w-auto text-[10pt] sm:text-[12pt] print:text-[12pt]">
+              <table width="100%" style={{ width: '100%', borderBottom: '3px solid black', marginBottom: '15px', borderCollapse: 'collapse' }}>
                 <tbody>
-                  <tr><td className="w-24 sm:w-40 print:w-40 align-top">Nama</td><td className="w-2 sm:w-4 print:w-4 align-top">:</td><td className="font-bold uppercase align-top">GUNTUR BAYU JANTORO</td></tr>
-                  <tr><td className="align-top">Jabatan</td><td className="align-top">:</td><td className="align-top">Ketua RT.16</td></tr>
+                  <tr>
+                    <td width="15%" align="left" style={{ width: '15%', textAlign: 'left', verticalAlign: 'middle', paddingBottom: '5px' }}>
+                      <img src="/logo-palembang.png" style={{ width: '80px', height: 'auto' }} alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
+                    </td>
+                    <td width="70%" align="center" style={{ width: '70%', textAlign: 'center', verticalAlign: 'middle', paddingBottom: '5px', whiteSpace: 'nowrap' }}>
+                      <h2 style={{ margin: 0, fontSize: '13.5pt', fontWeight: 'bold', textTransform: 'uppercase' }}>PEMERINTAH KOTA PALEMBANG</h2>
+                      <h2 style={{ margin: 0, fontSize: '13.5pt', fontWeight: 'bold', textTransform: 'uppercase' }}>KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                      <h1 style={{ margin: '2px 0', fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase' }}>KETUA RT.16 RW.04</h1>
+                      <p style={{ margin: 0, fontSize: '10.5pt' }}>Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                    </td>
+                    <td width="15%" style={{ width: '15%', paddingBottom: '5px' }}></td>
+                  </tr>
                 </tbody>
               </table>
 
-              <p className="mb-2 text-left">Dengan ini menerangkan bahwa :</p>
-              <table className="mb-3 ml-0 sm:ml-4 print:ml-4 leading-snug break-inside-avoid w-full sm:w-auto text-[10pt] sm:text-[12pt] print:text-[12pt]">
+              <div align="center" style={{ textAlign: 'center', marginBottom: '15px' }}>
+                <p style={{ fontSize: '12pt', fontWeight: 'bold', textDecoration: 'underline', margin: 0 }}>SURAT KETERANGAN</p>
+                <p style={{ fontSize: '12pt', margin: '2px 0 0 0' }}>Nomor : {cetakSurat?.nomorSurat}</p>
+              </div>
+
+              <p style={{ margin: '0 0 8px 0', textAlign: 'justify' }}>Yang bertanda tangan dibawah ini :</p>
+              
+              <table width="100%" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', tableLayout: 'fixed' }}>
                 <tbody>
-                  <tr><td className="w-24 sm:w-40 print:w-40 align-top py-0.5">Nama</td><td className="w-2 sm:w-4 print:w-4 align-top py-0.5">:</td><td className="font-bold uppercase align-top py-0.5">{cetakSurat?.warga?.nama || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">NIK</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.nik || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Jenis Kelamin</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td></tr>
-                  <tr><td className="align-top py-0.5">Tempat/Tgl. Lahir</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.tempat_lahir || '-'} / {cetakSurat?.warga?.tgl_lahir || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Bangsa/Agama</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">Indonesia / {cetakSurat?.warga?.agama || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Pekerjaan</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5 capitalize">{cetakSurat?.warga?.pekerjaan || '-'}</td></tr>
-                  <tr><td className="align-top py-0.5">Alamat</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.alamat || '-'}<br/>RT.16 RW.04 Kelurahan Talangputri Kec. Plaju</td></tr>
-                  <tr><td className="align-top py-0.5">Kartu Keluarga No</td><td className="align-top py-0.5">:</td><td className="align-top py-0.5">{cetakSurat?.warga?.no_kk || '-'}</td></tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Nama</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;<b>GUNTUR BAYU JANTORO</b></td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Jabatan</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;Ketua RT.16</td>
+                  </tr>
                 </tbody>
               </table>
 
-              <p className="mb-2 text-justify indent-6 sm:indent-[1cm] print:indent-[1cm]">Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              <p style={{ margin: '0 0 8px 0', textAlign: 'justify' }}>Dengan ini menerangkan bahwa :</p>
               
-              <p className="mb-2 text-left">Surat Keterangan ini diberikan untuk : <strong className="uppercase">{cetakSurat?.tujuan}</strong></p>
-              <p className="mb-4 text-left break-inside-avoid">Demikian keterangan ini untuk dipergunakan seperlunya.</p>
-              
-              {/* --- AREA TANDA TANGAN --- */}
-              <div className="w-full mt-4 break-inside-avoid leading-normal flex relative z-10 text-[10pt] sm:text-[12pt] print:text-[12pt]">
-                <div className="w-1/2 text-center">
-                  <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
-                  <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
-                  <div className="h-16 sm:h-20 print:h-20"></div>
-                  <p className="font-bold uppercase underline" style={{ textUnderlineOffset: '2px' }}>HERIYANSAH</p>
-                </div>
-                
-                <div className="w-1/2 text-center flex flex-col items-center">
-                  <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
-                  <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
-                  
-                  <div className="h-16 sm:h-20 print:h-20 relative w-full flex items-center justify-center">
-                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-15px] sm:bottom-[-30px] print:bottom-[-30px] w-28 sm:w-56 print:w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  </div>
+              <table width="100%" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', tableLayout: 'fixed' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Nama</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top', textTransform: 'uppercase' }}>&nbsp;&nbsp;{cetakSurat?.warga?.nama || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>NIK</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.nik || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Jenis Kelamin</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Tempat/Tgl. Lahir</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.tempat_lahir || '-'} / {formatTglLahirLayar(cetakSurat?.warga?.tgl_lahir)}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Bangsa/Agama</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;Indonesia / {cetakSurat?.warga?.agama || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Pekerjaan</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top', textTransform: 'capitalize' }}>&nbsp;&nbsp;{cetakSurat?.warga?.pekerjaan || '-'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Alamat</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.alamat || '-'}<br/>&nbsp;&nbsp;RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td>
+                  </tr>
+                  <tr>
+                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Kartu Keluarga No</td>
+                    <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.no_kk || '-'}</td>
+                  </tr>
+                </tbody>
+              </table>
 
-                  <p className="font-bold uppercase underline relative z-0" style={{ textUnderlineOffset: '2px' }}>
-                    GUNTUR BAYU JANTORO
-                  </p>
-                </div>
+              <p style={{ margin: '0 0 8px 0', textAlign: 'justify' }}>Benar nama tersebut diatas adalah penduduk / warga Kelurahan Talangputri dan bertempat tinggal di RT.16 RW.04 Kelurahan Talangputri Kecamatan Plaju Kota Palembang dan benar yang bersangkutan di atas {cetakSurat?.deskripsi}</p>
+              
+              <p style={{ margin: '0 0 8px 0', textAlign: 'left' }}>Surat Keterangan ini diberikan untuk : {cetakSurat?.tujuan}</p>
+              <p style={{ margin: '0 0 8px 0', textAlign: 'justify' }}>Demikian keterangan ini untuk dipergunakan seperlunya.</p>
+              
+              <table width="100%" style={{ width: '100%', marginTop: '15px', borderCollapse: 'collapse', pageBreakInside: 'avoid' }}>
+                <tbody>
+                  <tr>
+                    <td width="50%" style={{ width: '50%' }}></td>
+                    <td width="50%" align="center" style={{ width: '50%', textAlign: 'center' }}>Palembang, {cetakSurat?.tanggal}</td>
+                  </tr>
+                  <tr>
+                    <td align="center" style={{ textAlign: 'center' }}><br/>Mengetahui,<br/>Ketua RW.04</td>
+                    <td align="center" style={{ textAlign: 'center' }}><br/><br/>Ketua RT.16</td>
+                  </tr>
+                  <tr>
+                    <td align="center" style={{ height: '95px', textAlign: 'center', verticalAlign: 'bottom' }}>
+                      <span style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase' }}>HERIYANSAH</span>
+                    </td>
+                    <td align="center" style={{ height: '95px', position: 'relative', textAlign: 'center', verticalAlign: 'bottom' }}>
+                      {/* EFEK TTD MENGGORES: bottom diturunkan menjadi -15px, zIndex diubah ke 10 */}
+                      <img src="/ttd-guntur.png" style={{ position: 'absolute', bottom: '-15px', left: '50%', transform: 'translateX(-50%)', width: '150px', zIndex: 10, mixBlendMode: 'multiply' }} alt="TTD" onError={(e) => { e.target.style.display = 'none'; }} />
+                      <span style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>GUNTUR BAYU JANTORO</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style={{ marginTop: '15px' }}>
+                <p style={{ margin: 0 }}>Catatan :</p>
+                <p style={{ margin: 0 }}>PBB Tahun {new Date().getFullYear()}</p>
+                <p style={{ margin: 0 }}>{cetakSurat?.pbb || 'Lunas/Belum Lunas/Tidak Terbit'}</p>
               </div>
 
-              {/* --- CATATAN PBB --- */}
-              <div className="mt-6 text-xs sm:text-[11pt] print:text-[11pt] leading-tight break-inside-avoid text-left relative z-10">
-                <p className="font-bold">Catatan :</p>
-                <p>PBB Tahun {new Date().getFullYear()} : <span className="font-bold">{cetakSurat?.pbb || 'Lunas'}</span></p>
-              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL EDIT & HAPUS */}
       {showSuratModal.edit && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden">
           <form onSubmit={simpanEditSurat} className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fade-in">
@@ -436,7 +630,6 @@ export default function BuatSuratView({
         </div>
       )}
 
-      {/* GLOBAL PRINT CSS MURNI DAN AMAN (NO BLANK PAGE) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { size: A4 portrait !important; margin: 0 !important; }
@@ -460,7 +653,6 @@ export default function BuatSuratView({
           table { page-break-inside: avoid !important; }
         }
         .text-capitalize { text-transform: capitalize; }
-        .text-indent-8 { text-indent: 1cm; }
         .animate-fade-in { animation: fadeInBuat 0.3s ease-in-out; }
         @keyframes fadeInBuat {
           from { opacity: 0; transform: translateY(10px); }

@@ -1,8 +1,9 @@
 // File: src/components/DashboardKetua/PenunjukanPetugasView.jsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function PenunjukanPetugasView({ setActiveView }) {
+  const supabase = getSupabaseClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [dataWargaLokal, setDataWargaLokal] = useState([]);

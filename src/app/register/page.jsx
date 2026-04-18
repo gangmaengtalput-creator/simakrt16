@@ -1,11 +1,14 @@
+// File: src/app/register/page.jsx
 "use client";
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabaseClient } from '../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
 export default function Register() {
   const router = useRouter();
+  const supabase = getSupabaseClient();
+
   const [step, setStep] = useState(1);
   const [nik, setNik] = useState('');
   const [formData, setFormData] = useState({
@@ -24,7 +27,6 @@ export default function Register() {
   const [isLocked, setIsLocked] = useState(false);
   const [lockdownTimer, setLockdownTimer] = useState(0);
 
-  // Cek status lockout dari localStorage (Anti-Refresh Bypass)
   useEffect(() => {
     const lockedUntil = localStorage.getItem('register_lockout_time');
     const savedAttempts = localStorage.getItem('register_failed_checks');
@@ -44,7 +46,6 @@ export default function Register() {
     }
   }, []);
 
-  // Timer untuk sistem Lockout
   useEffect(() => {
     let timer;
     if (isLocked && lockdownTimer > 0) {
@@ -59,13 +60,11 @@ export default function Register() {
     return () => clearInterval(timer);
   }, [isLocked, lockdownTimer]);
 
-  // Handler Keamanan untuk input NIK (Hanya Angka)
   const handleNikChange = (e) => {
     const onlyNumbers = e.target.value.replace(/[^0-9]/g, '');
     if (onlyNumbers.length <= 16) setNik(onlyNumbers);
   };
 
-  // Handler Keamanan untuk input No HP (Hanya Angka)
   const handlePhoneChange = (e) => {
     const onlyNumbers = e.target.value.replace(/[^0-9]/g, '');
     setFormData({ ...formData, no_hp: onlyNumbers });
@@ -95,7 +94,6 @@ export default function Register() {
     if (isLocked) return;
     setErrorMsg('');
 
-    // KEAMANAN: Validasi Panjang NIK
     if (nik.length !== 16) {
       setErrorMsg("NIK harus terdiri dari tepat 16 digit angka.");
       return;
@@ -104,7 +102,6 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Cek di tabel referensi RT sekaligus mengambil nama & tanggal lahir
       const { data: masterData, error } = await supabase
         .from('master_warga')
         .select('is_registered, nama, tgl_lahir')
@@ -122,11 +119,9 @@ export default function Register() {
         return;
       }
 
-      // Reset jejak kegagalan jika NIK valid
       setFailedChecks(0);
       localStorage.removeItem('register_failed_checks');
 
-      // Jika NIK valid dan belum daftar, isi form otomatis dan lanjut ke Tahap 2
       setFormData({
         ...formData,
         nama: masterData.nama || '',
@@ -142,13 +137,12 @@ export default function Register() {
   };
 
   // ==========================================
-  // TAHAP 2: PROSES PENDAFTARAN AKUN
+  // TAHAP 2: PROSES PENDAFTARAN & NOTIFIKASI
   // ==========================================
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
-    // KEAMANAN: Validasi Kekuatan Password & No HP minimal
     if (formData.password.length < 8) {
       setErrorMsg("Password terlalu lemah. Gunakan minimal 8 karakter demi keamanan.");
       return;
@@ -185,7 +179,7 @@ export default function Register() {
           no_hp: formData.no_hp,
           email: formData.email,
           role: 'warga',
-          status: 'pending' // Rekomendasi keamanan: Akun baru harus di-approve RT
+          status: 'pending' 
         }]);
 
       if (profileError) throw profileError;
@@ -198,7 +192,27 @@ export default function Register() {
 
       if (updateError) throw updateError;
 
-      // Berhasil
+      // 🚨 EKSEKUSI API NOTIFIKASI REGISTRASI KE KETUA RT
+      try {
+        const notifResponse = await fetch('/api/notify-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nama: formData.nama,
+            nik: nik,
+            no_hp: formData.no_hp,
+            email: formData.email
+          })
+        });
+        
+        if (!notifResponse.ok) {
+          console.warn("Gagal mengirim email ke Ketua RT. Server merespon dengan status:", notifResponse.status);
+        }
+      } catch (notifErr) {
+        console.error("Gagal mengeksekusi API Notifikasi (Mungkin masalah jaringan/CORS):", notifErr);
+      }
+
+      // Pendaftaran Berhasil
       setShowSuccessModal(true);
 
     } catch (error) {
@@ -216,9 +230,7 @@ export default function Register() {
           <p className="text-sm text-gray-500 mt-2">Daftarkan akun untuk akses layanan mandiri RT.16</p>
         </div>
 
-        {/* ========================================== */}
         {/* TAMPILAN TAHAP 1: INPUT NIK */}
-        {/* ========================================== */}
         {step === 1 && (
           <form onSubmit={handleCheckNIK} className="space-y-4">
             <div>
@@ -250,16 +262,13 @@ export default function Register() {
           </form>
         )}
 
-        {/* ========================================== */}
         {/* TAMPILAN TAHAP 2: LENGKAPI DATA */}
-        {/* ========================================== */}
         {step === 2 && (
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="bg-green-50 border border-green-200 p-3 rounded-lg mb-4">
               <p className="text-xs text-green-800 font-medium">✅ NIK Anda terdaftar. Silakan lengkapi formulir di bawah ini untuk melanjutkan.</p>
             </div>
 
-            {/* FIELD TERKUNCI (READ-ONLY) */}
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">NIK</label>
               <input 
@@ -290,7 +299,6 @@ export default function Register() {
               />
             </div>
             
-            {/* FIELD YANG BISA DIISI */}
             <div className="pt-2 border-t">
               <label className="block text-xs font-bold text-gray-700 mb-1">Nomor WhatsApp / HP <span className="text-red-500">*</span></label>
               <input 
@@ -327,8 +335,6 @@ export default function Register() {
                   required 
                   className="w-full px-4 py-2 border rounded-md focus:ring-green-500 outline-none pr-12" 
                 />
-                
-                {/* ICON MATA (EYE ICON) */}
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
