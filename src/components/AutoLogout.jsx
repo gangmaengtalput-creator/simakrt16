@@ -1,4 +1,3 @@
-// File: src/components/AutoLogout.jsx
 'use client';
 
 import { useEffect } from 'react';

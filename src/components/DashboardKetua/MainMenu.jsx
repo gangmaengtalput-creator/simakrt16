@@ -1,4 +1,3 @@
-// File: src/components/DashboardKetua/MainMenu.jsx
 import React, { useState } from 'react';
 
 export default function MainMenu({
@@ -49,6 +48,7 @@ export default function MainMenu({
       {/* GRID MENU - Diubah menjadi 3 Kolom agar seimbang */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-fade-in">
         
+        {/* MENU UTAMA (Hanya Tampil Jika Tidak Ada Sub-Menu yang Aktif) */}
         {!subMenu && (
           <>
             {/* 1. Data Warga */}
@@ -104,10 +104,8 @@ export default function MainMenu({
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed">Cetak Laporan Triwulan dan Data Dasar Keluarga (Format PDF).</p>
             </button>
-          </>
-        )}
 
-        {/* 7. Verifikasi Akun */}
+            {/* 7. Verifikasi Akun (Sekarang Aman di Dalam Menu Utama) */}
             <button onClick={fetchAkunPending} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-400 hover:shadow-md hover:-translate-y-1 transition-all text-left group relative">
               <h3 className="font-bold text-lg text-yellow-600 mb-2 flex items-center justify-between">
                 <span>7. Verifikasi Akun Baru</span>
@@ -122,6 +120,8 @@ export default function MainMenu({
                 </div>
               )}
             </button>
+          </>
+        )}
 
 
         {/* SUB-MENU: KEUANGAN RT */}

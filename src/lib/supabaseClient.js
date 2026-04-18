@@ -1,5 +1,3 @@
-// File: src/lib/supabaseClient.js
-
 import { createBrowserClient } from '@supabase/ssr'
 
 let client = null

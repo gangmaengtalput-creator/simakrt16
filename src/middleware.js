@@ -1,4 +1,3 @@
-// File: src/middleware.js
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 

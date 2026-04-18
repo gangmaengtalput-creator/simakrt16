@@ -1,4 +1,3 @@
-// File: src/components/DashboardKetua/LaporanView.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 

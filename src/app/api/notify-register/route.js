@@ -1,4 +1,3 @@
-// File: src/app/api/notify-register/route.js
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { headers } from 'next/headers';

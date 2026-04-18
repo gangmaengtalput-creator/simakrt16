@@ -1,4 +1,3 @@
-// File: src/app/api/notify-warga/route.js
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { createServerClient } from '@supabase/ssr';

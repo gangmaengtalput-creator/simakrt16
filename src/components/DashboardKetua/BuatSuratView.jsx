@@ -1,4 +1,3 @@
-// File: src/components/DashboardKetua/BuatSuratView.jsx
 import React, { useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
@@ -18,34 +17,92 @@ export default function BuatSuratView({
   const supabase = getSupabaseClient();
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // State Edit Surat Khusus (Karena butuh input form ganda)
   const [selectedSurat, setSelectedSurat] = useState(null);
-  const [showSuratModal, setShowSuratModal] = useState({ edit: false, delete: false });
+  const [showSuratModal, setShowSuratModal] = useState({ edit: false });
   const [editSuratData, setEditSuratData] = useState({});
 
+  // ==========================================
+  // STATE MODAL GLOBAL PROFESIONAL
+  // ==========================================
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    type: 'info', // 'success', 'error', 'warning', 'info', 'confirm', 'prompt'
+    title: '',
+    message: '',
+    confirmText: 'Mengerti',
+    cancelText: 'Batal',
+    onConfirm: null,
+  });
+
+  const [promptInput, setPromptInput] = useState('');
+  const [promptError, setPromptError] = useState('');
+
+  const showModal = (config) => {
+    setPromptInput('');
+    setPromptError('');
+    setAlertModal({ ...alertModal, ...config, isOpen: true });
+  };
+
+  const closeModal = () => setAlertModal({ ...alertModal, isOpen: false });
+
+  const handleConfirm = () => {
+    if (alertModal.type === 'prompt') {
+      if (!promptInput.trim()) {
+        setPromptError('Alasan penolakan tidak boleh kosong!');
+        return;
+      }
+      if (alertModal.onConfirm) alertModal.onConfirm(promptInput);
+    } else {
+      if (alertModal.onConfirm) alertModal.onConfirm();
+    }
+  };
+
+  // ==========================================
+  // FUNGSI LOGIKA PEMBUATAN SURAT
+  // ==========================================
   const cariWargaSurat = async (e) => {
     e.preventDefault(); 
     setIsLoading(true); 
     setWargaSurat(null);
     const { data, error } = await supabase.from('master_warga').select('*').eq('nik', suratNIK).single();
-    if (error || !data) alert("NIK tidak ditemukan di database warga!"); 
-    else setWargaSurat(data);
+    
+    if (error || !data) {
+      showModal({ type: 'warning', title: 'Data Tidak Ditemukan', message: 'NIK tersebut tidak terdaftar di dalam database master warga.', confirmText: 'Tutup', onConfirm: closeModal });
+    } else {
+      setWargaSurat(data);
+    }
     setIsLoading(false);
   };
 
   const handleSuratChange = (e) => setSuratFormData({ ...suratFormData, [e.target.name]: e.target.value });
 
-  const tolakDariGenerator = async (e) => {
+  const tolakDariGenerator = (e) => {
     e.preventDefault();
-    const alasan = prompt("Masukkan alasan penolakan surat ini:");
-    if (!alasan) return;
-    
-    setIsProcessing(true);
-    await supabase.from('permintaan_surat').update({ status: 'Ditolak', keterangan: `Ditolak: ${alasan}` }).eq('id', permintaanAktifId);
-    setIsProcessing(false);
-    
-    setPermintaanAktifId(null);
-    setCetakSurat(null);
-    fetchPermintaanMasuk(); 
+    showModal({
+      type: 'prompt',
+      title: 'Tolak Permintaan Surat',
+      message: 'Berikan alasan mengapa Anda menolak pengajuan surat ini:',
+      confirmText: 'Tolak Permintaan',
+      cancelText: 'Batal',
+      onConfirm: async (alasan) => {
+        setIsProcessing(true);
+        closeModal();
+        
+        await supabase.from('permintaan_surat').update({ status: 'Ditolak', keterangan: `Ditolak: ${alasan}` }).eq('id', permintaanAktifId);
+        
+        setIsProcessing(false);
+        setPermintaanAktifId(null);
+        setCetakSurat(null);
+        fetchPermintaanMasuk(); 
+        
+        showModal({ type: 'success', title: 'Permintaan Ditolak', message: 'Permintaan surat warga tersebut berhasil ditolak.', confirmText: 'OK', onConfirm: () => {
+          closeModal();
+          setActiveView('permintaan_masuk');
+        }});
+      }
+    });
   };
 
   const buatSuratBaru = async (e) => {
@@ -100,7 +157,6 @@ export default function BuatSuratView({
             const tglLahirIndo = formatTglLahir(wargaSurat?.tgl_lahir);
             const pbbTahun = date.getFullYear();
 
-            // MURNI TIDAK DIUBAH (HANYA EFEK MENGGORES DI TTD)
             const htmlDokumenSurat = `
               <!DOCTYPE html>
               <html lang="id">
@@ -253,8 +309,10 @@ export default function BuatSuratView({
         pbb: suratFormData.pbb, 
         tanggal: date.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}) 
       }); 
+      
+      showModal({ type: 'success', title: 'Berhasil', message: 'Surat Keterangan berhasil dibuat dan siap untuk dicetak.', confirmText: 'Lihat Surat', onConfirm: closeModal });
     } else {
-      alert("Gagal membuat nomor surat: " + error?.message);
+      showModal({ type: 'error', title: 'Gagal Menyimpan', message: `Gagal membuat nomor surat: ${error?.message}`, confirmText: 'Tutup', onConfirm: closeModal });
     }
     setIsProcessing(false);
   };
@@ -265,7 +323,10 @@ export default function BuatSuratView({
       const { data } = await supabase.from('master_warga').select('*').eq('nik', surat?.nik_warga).single();
       if (data) wargaInfo = data;
     }
-    if (!wargaInfo) return alert("Gagal! Data warga pemohon ini sudah terhapus dari database.");
+    if (!wargaInfo) {
+      showModal({ type: 'warning', title: 'Data Terhapus', message: 'Gagal memuat pratinjau. Data pemohon ini sudah terhapus dari database master.', confirmText: 'Mengerti', onConfirm: closeModal });
+      return;
+    }
     
     setCetakSurat({ 
       nomorSurat: surat?.nomor_surat, 
@@ -280,27 +341,43 @@ export default function BuatSuratView({
   const aksiEditSurat = (surat) => { 
     setSelectedSurat(surat); 
     setEditSuratData({ deskripsi: surat?.deskripsi, tujuan_surat: surat?.tujuan_surat }); 
-    setShowSuratModal({ ...showSuratModal, edit: true }); 
+    setShowSuratModal({ edit: true }); 
   };
 
   const simpanEditSurat = async (e) => { 
     e.preventDefault(); setIsProcessing(true); 
     const { error } = await supabase.from('surat_keterangan').update(editSuratData).eq('id', selectedSurat?.id); 
     setIsProcessing(false); 
-    if (!error) { setShowSuratModal({ ...showSuratModal, edit: false }); fetchRiwayatSurat(); } 
-    else alert(error.message); 
+    if (!error) { 
+      setShowSuratModal({ edit: false }); 
+      fetchRiwayatSurat(); 
+      showModal({ type: 'success', title: 'Berhasil', message: 'Arsip surat berhasil diperbarui.', confirmText: 'OK', onConfirm: closeModal });
+    } 
+    else {
+      showModal({ type: 'error', title: 'Gagal Edit', message: error.message, confirmText: 'Tutup', onConfirm: closeModal });
+    }
   };
 
   const aksiHapusSurat = (surat) => { 
-    setSelectedSurat(surat); setShowSuratModal({ ...showSuratModal, delete: true }); 
-  };
-
-  const simpanHapusSurat = async (e) => { 
-    e.preventDefault(); setIsProcessing(true); 
-    const { error } = await supabase.from('surat_keterangan').delete().eq('id', selectedSurat?.id); 
-    setIsProcessing(false); 
-    if (!error) { setShowSuratModal({ ...showSuratModal, delete: false }); fetchRiwayatSurat(); } 
-    else alert(error.message); 
+    showModal({
+      type: 'confirm',
+      title: 'Hapus Arsip Surat?',
+      message: `Anda yakin ingin menghapus permanen riwayat surat nomor ${surat.nomor_surat}? (Tindakan ini tidak akan mereset nomor urut)`,
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setIsProcessing(true);
+        closeModal();
+        const { error } = await supabase.from('surat_keterangan').delete().eq('id', surat.id);
+        setIsProcessing(false);
+        if (!error) {
+          fetchRiwayatSurat();
+          showModal({ type: 'success', title: 'Dihapus', message: 'Arsip surat berhasil dihapus dari database.', confirmText: 'OK', onConfirm: closeModal });
+        } else {
+          showModal({ type: 'error', title: 'Gagal Hapus', message: error.message, confirmText: 'Tutup', onConfirm: closeModal });
+        }
+      }
+    });
   };
 
   const formatTglLahirLayar = (tgl) => {
@@ -320,57 +397,70 @@ export default function BuatSuratView({
             setActiveView('menu');
           }
           setCetakSurat(null); 
-        }} className="text-xs sm:text-sm text-green-700 font-bold hover:underline bg-green-100 px-4 py-2 rounded-lg">
-          &larr; {permintaanAktifId ? 'Batal & Kembali ke Kotak Masuk' : 'Kembali ke Menu Utama'}
+        }} className="text-xs sm:text-sm text-blue-700 font-bold hover:underline bg-blue-50 px-5 py-2.5 rounded-xl border border-blue-100 flex items-center gap-2 transition hover:bg-blue-100 shadow-sm">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          {permintaanAktifId ? 'Batal & Kembali ke Kotak Masuk' : 'Kembali ke Menu Utama'}
         </button>
       </div>
 
       {!cetakSurat && (
         <>
-          <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden mb-8 border-2 border-green-500">
-            <div className="bg-green-600 p-4 flex justify-between items-center break-inside-avoid">
-              <h2 className="text-lg sm:text-xl font-bold text-white">Generator Surat Keterangan</h2>
-              {permintaanAktifId && <span className="bg-orange-400 text-white text-xs font-bold px-2 py-1 rounded animate-pulse">Mode Memproses Permintaan</span>}
+          <div className="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] overflow-hidden print:hidden mb-8 border border-gray-100">
+            <div className="bg-gradient-to-r from-teal-500 to-green-600 p-5 flex justify-between items-center break-inside-avoid">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-lg shadow-inner">
+                  <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-black tracking-wide">Generator Surat Keterangan</h2>
+              </div>
+              {permintaanAktifId && <span className="bg-white/20 text-white border border-white/40 text-[11px] font-bold px-3 py-1.5 rounded-lg animate-pulse tracking-widest shadow-sm">MEMPROSES PENGAJUAN WARGA</span>}
             </div>
-            <div className="p-4 sm:p-6">
+            
+            <div className="p-5 sm:p-7 bg-gray-50/50">
               
               {!permintaanAktifId && (
-                <form onSubmit={cariWargaSurat} className="flex flex-col sm:flex-row gap-2 mb-8 bg-gray-50 p-4 rounded-lg border">
+                <form onSubmit={cariWargaSurat} className="flex flex-col sm:flex-row gap-3 mb-8 bg-white p-5 rounded-2xl border border-blue-100 shadow-sm">
                   <div className="flex-1">
-                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Cari NIK Pemohon:</label>
-                    <input type="text" required value={suratNIK} onChange={(e) => setSuratNIK(e.target.value)} placeholder="Masukkan NIK persis sesuai database..." className="w-full border p-2.5 rounded-lg focus:ring-green-500" />
+                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Cari NIK Pemohon:</label>
+                    <div className="relative">
+                      <svg className="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                      <input type="text" required value={suratNIK} onChange={(e) => setSuratNIK(e.target.value)} placeholder="Masukkan NIK persis sesuai database..." className="w-full border border-gray-200 pl-10 pr-4 py-3 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                    </div>
                   </div>
-                  <button type="submit" disabled={isLoading} className="mt-2 sm:mt-6 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-700">
+                  <button type="submit" disabled={isLoading} className="mt-1 sm:mt-7 bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md shadow-blue-200 transition-all active:scale-95 disabled:opacity-50">
                     {isLoading ? 'Mencari...' : 'Cari Data'}
                   </button>
                 </form>
               )}
 
               {wargaSurat && (
-                <form onSubmit={buatSuratBaru} className="space-y-4 sm:space-y-6">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                    <h3 className="font-bold text-blue-800 mb-2 border-b border-blue-200 pb-2 text-sm">Identitas Pemohon (Otomatis)</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 text-xs sm:text-sm">
-                      <div className="text-gray-500">Nama: <span className="font-bold text-gray-800">{wargaSurat?.nama || '-'}</span></div>
-                      <div className="text-gray-500">NIK: <span className="font-bold text-gray-800">{wargaSurat?.nik || '-'}</span></div>
-                      <div className="text-gray-500">TTL: <span className="font-bold text-gray-800">{wargaSurat?.tempat_lahir || '-'}, {formatTglLahirLayar(wargaSurat?.tgl_lahir)}</span></div>
-                      <div className="text-gray-500">Pekerjaan: <span className="font-bold text-gray-800">{wargaSurat?.pekerjaan || '-'}</span></div>
+                <form onSubmit={buatSuratBaru} className="space-y-5 sm:space-y-6">
+                  <div className="bg-blue-50/70 p-5 rounded-2xl border border-blue-100 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                      <svg className="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </div>
+                    <h3 className="font-black text-blue-800 mb-3 border-b border-blue-200/50 pb-2 text-xs tracking-widest relative z-10">IDENTITAS PEMOHON (OTOMATIS)</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm relative z-10">
+                      <div className="text-gray-500 font-medium">Nama Lengkap:<br/><span className="font-black text-gray-800 text-base">{wargaSurat?.nama || '-'}</span></div>
+                      <div className="text-gray-500 font-medium">NIK Kependudukan:<br/><span className="font-black text-gray-800 text-base">{wargaSurat?.nik || '-'}</span></div>
+                      <div className="text-gray-500 font-medium">Tempat, Tanggal Lahir:<br/><span className="font-bold text-gray-800">{wargaSurat?.tempat_lahir || '-'}, {formatTglLahirLayar(wargaSurat?.tgl_lahir)}</span></div>
+                      <div className="text-gray-500 font-medium">Pekerjaan:<br/><span className="font-bold text-gray-800">{wargaSurat?.pekerjaan || '-'}</span></div>
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div>
-                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Deskripsi Keterangan (Isi dari surat):</label>
-                      <textarea name="deskripsi" required value={suratFormData.deskripsi} onChange={handleSuratChange} rows="3" className="w-full border p-3 rounded-lg bg-yellow-50 focus:bg-white"></textarea>
+                      <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Deskripsi Keterangan (Isi dari surat) <span className="text-red-500">*</span></label>
+                      <textarea name="deskripsi" required value={suratFormData.deskripsi} onChange={handleSuratChange} rows="3" className="w-full border border-gray-200 p-3.5 rounded-xl bg-green-50/50 focus:bg-white focus:ring-2 focus:ring-green-500 outline-none transition-all"></textarea>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Tujuan Surat:</label>
-                        <input type="text" name="tujuan_surat" required value={suratFormData.tujuan_surat} onChange={handleSuratChange} className="w-full border p-2.5 rounded-lg bg-yellow-50 focus:bg-white" />
+                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Tujuan Surat <span className="text-red-500">*</span></label>
+                        <input type="text" name="tujuan_surat" required value={suratFormData.tujuan_surat} onChange={handleSuratChange} className="w-full border border-gray-200 p-3 rounded-xl bg-green-50/50 focus:bg-white focus:ring-2 focus:ring-green-500 outline-none transition-all" />
                       </div>
                       <div>
-                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">Status PBB Tahun Ini:</label>
-                        <select name="pbb" value={suratFormData.pbb} onChange={handleSuratChange} className="w-full border p-2.5 rounded-lg">
+                        <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">Status PBB Tahun Ini <span className="text-red-500">*</span></label>
+                        <select name="pbb" value={suratFormData.pbb} onChange={handleSuratChange} className="w-full border border-gray-200 p-3 rounded-xl bg-green-50/50 focus:bg-white focus:ring-2 focus:ring-green-500 outline-none transition-all font-medium text-gray-700">
                           <option value="Lunas">Lunas</option>
                           <option value="Belum Lunas">Belum Lunas</option>
                           <option value="Tidak Terbit">Tidak Terbit</option>
@@ -379,13 +469,14 @@ export default function BuatSuratView({
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t flex flex-col sm:flex-row justify-end gap-2">
+                  <div className="pt-6 border-t flex flex-col sm:flex-row justify-end gap-3 mt-4">
                     {permintaanAktifId && (
-                      <button type="button" onClick={tolakDariGenerator} disabled={isProcessing} className="w-full sm:w-auto bg-red-100 text-red-700 px-6 py-3 rounded-lg font-bold hover:bg-red-200 border border-red-200">
+                      <button type="button" onClick={tolakDariGenerator} disabled={isProcessing} className="w-full sm:w-auto bg-white text-red-600 px-6 py-3.5 rounded-xl font-bold hover:bg-red-50 hover:text-red-700 border-2 border-red-100 transition-all active:scale-95">
                         Tolak Permintaan Ini
                       </button>
                     )}
-                    <button type="submit" disabled={isProcessing} className="w-full sm:w-auto bg-green-600 text-white px-8 py-3 rounded-lg font-bold shadow-lg hover:bg-green-700">
+                    <button type="submit" disabled={isProcessing} className="w-full sm:w-auto bg-green-600 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-green-700 transition-all active:scale-95 flex justify-center items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                       {isProcessing ? 'Memproses...' : (permintaanAktifId ? 'Simpan & Selesaikan Permintaan' : 'Simpan & Lihat Surat Cetak')}
                     </button>
                   </div>
@@ -395,40 +486,45 @@ export default function BuatSuratView({
           </div>
 
           {!permintaanAktifId && (
-            <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden">
-              <div className="bg-gray-800 p-4 flex justify-between items-center break-inside-avoid">
-                <h2 className="text-lg font-bold text-white">Arsip / Riwayat Surat</h2>
+            <div className="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 overflow-hidden print:hidden">
+              <div className="bg-gray-800 p-5 flex justify-between items-center break-inside-avoid">
+                <h2 className="text-lg font-black text-white tracking-wide flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                  Arsip / Riwayat Surat
+                </h2>
               </div>
-              <div className="overflow-x-auto p-4 max-w-full">
-                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[700px]">
                   <thead>
-                    <tr className="bg-gray-100 text-gray-700 text-sm border-b-2">
-                      <th className="py-2 px-3">Tgl Dibuat</th>
-                      <th className="py-2 px-3">Nomor Surat</th>
-                      <th className="py-2 px-3">Pemohon</th>
-                      <th className="py-2 px-3 text-center">Aksi</th>
+                    <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                      <th className="py-4 px-5 font-bold">Tgl Dibuat</th>
+                      <th className="py-4 px-5 font-bold">Nomor Surat</th>
+                      <th className="py-4 px-5 font-bold">Pemohon</th>
+                      <th className="py-4 px-5 font-bold text-center">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="text-sm divide-y">
+                  <tbody className="text-sm divide-y divide-gray-100">
                     {riwayatSurat.map((surat) => {
                       if (!surat) return null;
                       const wargaObj = dataWarga.find(w => String(w?.nik) === String(surat?.nik_warga));
                       const namaPemohon = wargaObj ? wargaObj.nama : 'Memuat data...';
                       return (
-                        <tr key={surat.id} className="hover:bg-gray-50">
-                          <td className="py-2 px-3 text-gray-600">{new Date(surat.created_at).toLocaleDateString('id-ID')}</td>
-                          <td className="py-2 px-3 font-bold text-blue-700">{surat.nomor_surat}</td>
-                          <td className="py-2 px-3">{namaPemohon}</td>
-                          <td className="py-2 px-3 flex justify-center gap-1 action-buttons">
-                            <button onClick={() => aksiLihatSurat(surat)} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold hover:bg-blue-200">Cetak</button>
-                            <button onClick={() => aksiEditSurat(surat)} className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold hover:bg-yellow-200">Edit</button>
-                            <button onClick={() => aksiHapusSurat(surat)} className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold hover:bg-red-200">Hapus</button>
+                        <tr key={surat.id} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="py-4 px-5 text-gray-500 font-medium">{new Date(surat.created_at).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'})}</td>
+                          <td className="py-4 px-5 font-bold text-blue-700">{surat.nomor_surat}</td>
+                          <td className="py-4 px-5 font-bold text-gray-800">{namaPemohon}</td>
+                          <td className="py-4 px-5">
+                            <div className="flex justify-center items-center gap-2">
+                              <button onClick={() => aksiLihatSurat(surat)} className="bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Cetak</button>
+                              <button onClick={() => aksiEditSurat(surat)} className="bg-teal-50 hover:bg-teal-500 text-teal-700 hover:text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">Edit</button>
+                              <button onClick={() => aksiHapusSurat(surat)} className="text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-lg text-xs font-bold transition-all">Hapus</button>
+                            </div>
                           </td>
                         </tr>
                       );
                     })}
                     {riwayatSurat.length === 0 && (
-                      <tr><td colSpan="4" className="py-8 text-center text-gray-500">Belum ada riwayat surat.</td></tr>
+                      <tr><td colSpan="4" className="py-12 text-center text-gray-400 font-medium">Belum ada riwayat surat yang dicetak.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -438,10 +534,16 @@ export default function BuatSuratView({
         </>
       )}
 
+      {/* ========================================== */}
+      {/* TAMPILAN PRATINJAU DOKUMEN CETAK             */}
+      {/* ========================================== */}
       {cetakSurat && (
-        <div className="print-container m-0 p-0 shadow-none">
-          <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 bg-gray-800 p-4 rounded-lg print:hidden sticky top-4 z-50">
-            <p className="text-white font-medium text-sm">Pratinjau Surat Siap Cetak (Kertas A4)</p>
+        <div className="print-container m-0 p-0 shadow-none animate-in fade-in zoom-in-95 duration-300">
+          <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-3 bg-gray-900 p-5 rounded-2xl print:hidden sticky top-4 z-50 shadow-xl border border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500/20 p-2 rounded-lg"><svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg></div>
+              <p className="text-white font-bold text-sm tracking-wide">Pratinjau Surat Siap Cetak (Kertas A4)</p>
+            </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <button onClick={() => { 
                 setCetakSurat(null); 
@@ -451,22 +553,20 @@ export default function BuatSuratView({
                 } else if (activeView === 'permintaan_masuk') {
                   setActiveView('menu');
                 }
-              }} className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded font-bold text-sm hover:bg-gray-500">
-                {permintaanAktifId ? 'Tutup & Kembali ke Kotak Masuk' : 'Tutup Dokumen'}
+              }} className="flex-1 sm:flex-none px-5 py-2.5 bg-gray-700 text-gray-200 rounded-xl font-bold text-sm hover:bg-gray-600 transition-colors">
+                {permintaanAktifId ? 'Tutup & Ke Kotak Masuk' : 'Tutup Dokumen'}
               </button>
-              <button onClick={() => window.print()} className="flex-1 sm:flex-none px-6 py-2 bg-blue-500 text-white rounded font-bold text-sm hover:bg-blue-400">
+              <button onClick={() => window.print()} className="flex-1 sm:flex-none px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-500 shadow-lg shadow-blue-500/30 transition-all active:scale-95">
                 Cetak Sekarang
               </button>
             </div>
           </div>
 
-          <div className="w-full overflow-x-hidden sm:overflow-x-auto bg-gray-200 p-2 sm:p-4 rounded-xl print:bg-transparent print:p-0 flex justify-center">
-            
+          <div className="w-full overflow-x-hidden sm:overflow-x-auto bg-gray-100 p-4 sm:p-8 rounded-2xl print:bg-transparent print:p-0 flex justify-center">
             <div 
-              className="bg-white shadow-2xl print:shadow-none font-serif text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:min-h-[297mm] box-border mx-auto"
+              className="bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:min-h-[297mm] box-border mx-auto"
               style={{ padding: '1.5cm 2cm', fontSize: '12pt', lineHeight: '1.2' }}
             >
-              
               <table width="100%" style={{ width: '100%', borderBottom: '3px solid black', marginBottom: '15px', borderCollapse: 'collapse' }}>
                 <tbody>
                   <tr>
@@ -573,7 +673,6 @@ export default function BuatSuratView({
                       <span style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase' }}>HERIYANSAH</span>
                     </td>
                     <td align="center" style={{ height: '95px', position: 'relative', textAlign: 'center', verticalAlign: 'bottom' }}>
-                      {/* EFEK TTD MENGGORES: bottom diturunkan menjadi -15px, zIndex diubah ke 10 */}
                       <img src="/ttd-guntur.png" style={{ position: 'absolute', bottom: '-15px', left: '50%', transform: 'translateX(-50%)', width: '150px', zIndex: 10, mixBlendMode: 'multiply' }} alt="TTD" onError={(e) => { e.target.style.display = 'none'; }} />
                       <span style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>GUNTUR BAYU JANTORO</span>
                     </td>
@@ -592,41 +691,108 @@ export default function BuatSuratView({
         </div>
       )}
 
+      {/* ========================================== */}
+      {/* MODAL EDIT ARSIP SURAT KHUSUS              */}
+      {/* ========================================== */}
       {showSuratModal.edit && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden">
-          <form onSubmit={simpanEditSurat} className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-fade-in">
-            <div className="bg-yellow-500 p-4 break-inside-avoid"><h3 className="text-lg font-bold text-white">Edit Arsip Surat: {selectedSurat?.nomor_surat}</h3></div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi Surat:</label>
-                <textarea required value={editSuratData?.deskripsi || ''} onChange={(e) => setEditSuratData({...editSuratData, deskripsi: e.target.value})} rows="4" className="w-full border p-2 rounded focus:ring-yellow-500 bg-yellow-50"></textarea>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/70 backdrop-blur-sm p-4 print:hidden animate-in fade-in duration-200">
+          <form onSubmit={simpanEditSurat} className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden transform transition-all animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-teal-500 to-green-600 p-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Tujuan Surat:</label>
-                <input required type="text" value={editSuratData?.tujuan_surat || ''} onChange={(e) => setEditSuratData({...editSuratData, tujuan_surat: e.target.value})} className="w-full border p-2 rounded focus:ring-yellow-500 bg-yellow-50" />
+                <h3 className="text-lg font-black text-white leading-tight">Edit Arsip Surat</h3>
+                <p className="text-green-100 text-[11px] font-mono mt-0.5">{selectedSurat?.nomor_surat}</p>
               </div>
             </div>
-            <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
-              <button type="button" onClick={() => setShowSuratModal({...showSuratModal, edit: false})} className="px-4 py-2 text-gray-600 bg-gray-200 rounded text-sm font-medium hover:bg-gray-300">Batal</button>
-              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-yellow-600 text-white rounded font-bold text-sm hover:bg-yellow-700">{isProcessing ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+            <div className="p-7 space-y-5 bg-gray-50/50">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Deskripsi Keterangan Surat:</label>
+                <textarea required value={editSuratData?.deskripsi || ''} onChange={(e) => setEditSuratData({...editSuratData, deskripsi: e.target.value})} rows="4" className="w-full border border-gray-200 p-3.5 rounded-xl bg-green-50/50 focus:bg-white focus:ring-2 focus:ring-green-500 outline-none transition-all"></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tujuan Surat:</label>
+                <input required type="text" value={editSuratData?.tujuan_surat || ''} onChange={(e) => setEditSuratData({...editSuratData, tujuan_surat: e.target.value})} className="w-full border border-gray-200 p-3 rounded-xl bg-green-50/50 focus:bg-white focus:ring-2 focus:ring-green-500 outline-none transition-all" />
+              </div>
+            </div>
+            <div className="bg-white p-5 flex justify-end gap-3 border-t">
+              <button type="button" onClick={() => setShowSuratModal({ edit: false })} className="px-6 py-3 text-gray-600 bg-gray-100 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all active:scale-95">Batal</button>
+              <button type="submit" disabled={isProcessing} className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 shadow-md shadow-green-200 transition-all active:scale-95">{isProcessing ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
             </div>
           </form>
         </div>
       )}
 
-      {showSuratModal.delete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 print:hidden animate-fade-in">
-          <form onSubmit={simpanHapusSurat} className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
-            <div className="bg-red-600 p-4 break-inside-avoid"><h3 className="text-lg font-bold text-white">Hapus Arsip Surat</h3></div>
-            <div className="p-6">
-              <p className="text-gray-700 mb-4 text-sm leading-relaxed">Anda yakin ingin menghapus permanen riwayat surat nomor <strong>{selectedSurat?.nomor_surat}</strong>?</p>
-              <p className="text-xs text-red-700 bg-red-50 p-3 rounded border border-red-100 leading-normal">Peringatan: Tindakan ini tidak akan mereset nomor urut surat, namun catatan ini akan hilang selamanya dari arsip di database.</p>
+      {/* ========================================== */}
+      {/* MODAL GLOBAL ALERT PROFESIONAL             */}
+      {/* ========================================== */}
+      {alertModal.isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all animate-in zoom-in-95 duration-300">
+            <div className="p-8 flex flex-col items-center text-center">
+              
+              {/* ICON RENDERER (Nuansa Biru & Hijau untuk non-destructive action) */}
+              <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-6 rotate-3 ${
+                alertModal.type === 'error' ? 'bg-red-50 text-red-500 shadow-red-100' :
+                (alertModal.type === 'warning' || alertModal.type === 'confirm' || alertModal.type === 'prompt') ? 'bg-blue-50 text-blue-500 shadow-blue-100' :
+                alertModal.type === 'success' ? 'bg-green-50 text-green-500 shadow-green-100' :
+                'bg-teal-50 text-teal-500 shadow-teal-100'
+              }`}>
+                {alertModal.type === 'error' && <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>}
+                {(alertModal.type === 'warning' || alertModal.type === 'confirm' || alertModal.type === 'prompt') && <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>}
+                {alertModal.type === 'success' && <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg>}
+                {alertModal.type === 'info' && <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
+              </div>
+
+              <h3 className="text-2xl font-black text-gray-900 mb-3 leading-tight">{alertModal.title}</h3>
+              <p className="text-gray-500 leading-relaxed font-medium mb-6 px-2">{alertModal.message}</p>
+              
+              {/* PROMPT INPUT */}
+              {alertModal.type === 'prompt' && (
+                <div className="w-full text-left mb-6">
+                  <textarea 
+                    autoFocus
+                    rows="3"
+                    className={`w-full p-3.5 rounded-xl border ${promptError ? 'border-red-400 bg-red-50 focus:ring-red-400' : 'border-blue-200 bg-blue-50/50 focus:ring-blue-500'} focus:bg-white focus:outline-none focus:ring-2 transition-all text-sm`}
+                    placeholder="Ketikkan alasan disini..."
+                    value={promptInput}
+                    onChange={(e) => {
+                      setPromptInput(e.target.value);
+                      if (promptError) setPromptError(''); 
+                    }}
+                  ></textarea>
+                  {promptError && <p className="text-xs text-red-500 font-bold mt-1.5 animate-pulse">{promptError}</p>}
+                </div>
+              )}
+              
+              <div className="flex flex-col w-full gap-3">
+                <button
+                  onClick={handleConfirm}
+                  disabled={isProcessing}
+                  className={`w-full py-4 px-6 rounded-2xl text-white font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                    alertModal.type === 'error' ? 'bg-red-500 shadow-red-200' :
+                    (alertModal.type === 'confirm' && alertModal.confirmText.includes('Hapus')) ? 'bg-red-600 shadow-red-200' :
+                    (alertModal.type === 'confirm' || alertModal.type === 'prompt') ? 'bg-blue-600 shadow-blue-200' :
+                    alertModal.type === 'success' ? 'bg-green-500 shadow-green-200' :
+                    'bg-teal-600 shadow-teal-200'
+                  }`}
+                >
+                  {isProcessing ? 'Memproses...' : alertModal.confirmText}
+                </button>
+                
+                {(alertModal.type === 'confirm' || alertModal.type === 'prompt') && (
+                  <button
+                    onClick={closeModal}
+                    disabled={isProcessing}
+                    className="w-full py-4 px-6 rounded-2xl text-gray-500 font-bold hover:bg-gray-50 hover:text-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    {alertModal.cancelText}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="bg-gray-50 p-4 flex justify-end gap-2 border-t">
-              <button type="button" onClick={() => setShowSuratModal({...showSuratModal, delete: false})} className="px-4 py-2 text-gray-600 bg-gray-200 rounded text-sm font-medium hover:bg-gray-300">Batal</button>
-              <button type="submit" disabled={isProcessing} className="px-4 py-2 bg-red-600 text-white rounded font-bold text-sm hover:bg-red-700">{isProcessing ? 'Memproses...' : 'Hapus Permanen'}</button>
-            </div>
-          </form>
+          </div>
         </div>
       )}
 
@@ -653,11 +819,6 @@ export default function BuatSuratView({
           table { page-break-inside: avoid !important; }
         }
         .text-capitalize { text-transform: capitalize; }
-        .animate-fade-in { animation: fadeInBuat 0.3s ease-in-out; }
-        @keyframes fadeInBuat {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
       `}} />
     </div>
   );
