@@ -72,7 +72,7 @@ export default function Home() {
             <div className="flex items-center gap-4 group cursor-pointer">
               <div className="p-1 bg-white rounded-full shadow-sm border border-gray-100 group-hover:shadow-md transition-all">
                 <Image 
-                  src="/logo_garuda.jpeg" 
+                  src="/logo-maeng.png" 
                   alt="Logo Garuda Pancasila"
                   width={45} 
                   height={45}
@@ -112,7 +112,7 @@ export default function Home() {
               <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-white shadow-[0_0_50px_rgba(255,255,255,0.15)] p-2.5 border border-white/20 backdrop-blur-sm">
                 <div className="w-full h-full bg-white rounded-full p-2">
                   <img 
-                    src="/logo_garuda.jpeg" 
+                    src="/logo-maeng.png" 
                     alt="Logo Besar RT 16" 
                     className="w-full h-full object-contain rounded-full"
                   />
@@ -329,7 +329,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-10 text-center md:text-left mb-10">
             <div>
               <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-                <div className="bg-white p-1 rounded-full"><Image src="/logo_garuda.jpeg" alt="Logo" width={30} height={30} className="rounded-full"/></div>
+                <div className="bg-white p-1 rounded-full"><Image src="/logo-maeng.png" alt="Logo" width={30} height={30} className="rounded-full"/></div>
                 <span className="font-black text-2xl tracking-tighter text-white">SIMAK<span className="text-blue-500">RT</span></span>
               </div>
               <p className="text-gray-400 text-sm font-medium max-w-xs">Platform Sistem Informasi Manajemen Kependudukan Digital untuk kemudahan warga.</p>

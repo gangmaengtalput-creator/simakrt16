@@ -179,9 +179,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0B1120] p-4 relative overflow-hidden font-sans">
       
-      {/* BACKGROUND DECORATION MEWAH */}
+      {/* BACKGROUND DECORATION MEWAH (Diubah menjadi Biru Bersih) */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
 
       {/* MODAL SUCCESS LOGIN */}
@@ -210,9 +210,17 @@ export default function Login() {
         
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30 rotate-3">
-              <svg className="w-8 h-8 text-white -rotate-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            
+            {/* LOGO MAENG DITAMBAHKAN DI SINI */}
+            <div className="flex items-center justify-center mx-auto mb-6">
+              <img 
+                src="/logo-maeng.png" 
+                alt="Logo SIMAK RT Maeng" 
+                className="w-24 h-auto object-contain drop-shadow-md" 
+                // Catatan: Pastikan file 'logo-maeng.png' diletakkan di dalam folder 'public'
+              />
             </div>
+
             <h2 className="text-3xl font-black text-gray-900 tracking-tight">Selamat Datang</h2>
             <p className="mt-2 text-sm text-gray-500 font-medium">Masuk untuk mengakses portal SIMAK RT</p>
           </div>
@@ -250,7 +258,7 @@ export default function Login() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">Kata Sandi</label>
-                <a href="/lupa-password" className="text-xs font-bold text-blue-600 hover:text-indigo-600 transition-colors">Lupa Sandi?</a>
+                <a href="/lupa-password" className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">Lupa Sandi?</a>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -303,12 +311,12 @@ export default function Login() {
             </div>
           )}
 
-          {/* SUBMIT BUTTON */}
+          {/* SUBMIT BUTTON (Diubah menjadi Biru Solid) */}
           <button 
             type="submit" 
             disabled={isLoading || isLocked}
-            className={`w-full py-4 px-4 rounded-xl shadow-[0_8px_20px_rgb(59,130,246,0.2)] text-base font-black text-white transition-all transform active:scale-95 flex items-center justify-center gap-2 ${
-              isLoading || isLocked ? 'bg-blue-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-[0_8px_25px_rgb(59,130,246,0.4)]'
+            className={`w-full py-4 px-4 rounded-xl shadow-[0_8px_20px_rgb(37,99,235,0.2)] text-base font-black text-white transition-all transform active:scale-95 flex items-center justify-center gap-2 ${
+              isLoading || isLocked ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:shadow-[0_8px_25px_rgb(37,99,235,0.4)]'
             }`}
           >
             {isLoading ? (
@@ -320,7 +328,7 @@ export default function Login() {
           </button>
           
           <p className="text-center text-sm text-gray-500 mt-6 font-medium">
-            belum punya akun? <a href="/register" className="font-bold text-blue-600 hover:text-indigo-600 transition-colors relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-left">Daftar sekarang</a>
+            belum punya akun? <a href="/register" className="font-bold text-blue-600 hover:text-blue-800 transition-colors relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-blue-600 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-left">Daftar sekarang</a>
           </p>
         </form>
       </div>

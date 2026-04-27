@@ -224,17 +224,22 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0B1120] p-4 relative overflow-hidden font-sans py-10">
       
-      {/* BACKGROUND DECORATION MEWAH */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-600/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-600/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
+      {/* BACKGROUND DECORATION MEWAH DENGAN WARGA BIRU */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
 
       {/* KARTU FORM REGISTRASI ELEGANT */}
       <div className="bg-white/95 backdrop-blur-2xl p-8 sm:p-10 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-[500px] border border-white/50 relative z-10 transition-all duration-500">
         
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/30 rotate-3">
-            <svg className="w-8 h-8 text-white -rotate-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+          {/* LOGO MAENG */}
+          <div className="flex items-center justify-center mx-auto mb-6">
+            <img 
+              src="/logo-maeng.png" 
+              alt="Logo SIMAK RT Maeng" 
+              className="w-24 h-auto object-contain drop-shadow-md" 
+            />
           </div>
           <h2 className="text-3xl font-black text-gray-900 tracking-tight">Registrasi Warga</h2>
           <p className="mt-2 text-sm text-gray-500 font-medium">Buat akun untuk akses layanan mandiri SIMAK RT</p>
@@ -264,7 +269,7 @@ export default function Register() {
                   onChange={handleNikChange} 
                   required 
                   disabled={isLocked || isLoading}
-                  className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 text-gray-800 text-lg font-bold tracking-widest outline-none disabled:bg-gray-100 disabled:opacity-60 transition-all bg-gray-50 focus:bg-white"
+                  className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-800 text-lg font-bold tracking-widest outline-none disabled:bg-gray-100 disabled:opacity-60 transition-all bg-gray-50 focus:bg-white"
                 />
               </div>
               {nik.length > 0 && nik.length < 16 && (
@@ -289,8 +294,8 @@ export default function Register() {
             <button 
               type="submit" 
               disabled={isLoading || isLocked}
-              className={`w-full mt-4 py-4 px-4 rounded-xl shadow-[0_8px_20px_rgb(16,185,129,0.2)] text-base font-black text-white transition-all transform active:scale-95 flex items-center justify-center gap-2 ${
-                isLoading || isLocked ? 'bg-emerald-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 hover:shadow-[0_8px_25px_rgb(16,185,129,0.4)]'
+              className={`w-full mt-4 py-4 px-4 rounded-xl shadow-[0_8px_20px_rgb(37,99,235,0.2)] text-base font-black text-white transition-all transform active:scale-95 flex items-center justify-center gap-2 ${
+                isLoading || isLocked ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:shadow-[0_8px_25px_rgb(37,99,235,0.4)]'
               }`}
             >
               {isLoading ? (
@@ -303,9 +308,9 @@ export default function Register() {
         {/* TAMPILAN TAHAP 2: LENGKAPI DATA */}
         {step === 2 && (
           <form onSubmit={handleRegister} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl mb-6">
-              <p className="text-xs text-emerald-800 font-bold flex items-center gap-2">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg>
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl mb-6">
+              <p className="text-xs text-blue-800 font-bold flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"></path></svg>
                 NIK Terverifikasi! Silakan lengkapi formulir pendaftaran di bawah ini.
               </p>
             </div>
@@ -337,7 +342,7 @@ export default function Register() {
             </div>
             
             <div className="pt-3 border-t border-gray-100">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Nomor WhatsApp / HP <span className="text-emerald-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Nomor WhatsApp / HP <span className="text-blue-500">*</span></label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg></div>
                 <input 
@@ -347,13 +352,13 @@ export default function Register() {
                   value={formData.no_hp}
                   onChange={handlePhoneChange} 
                   required 
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-gray-800 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 text-sm font-bold text-gray-800 outline-none transition-all"
                 />
               </div>
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Alamat Email Aktif <span className="text-emerald-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Alamat Email Aktif <span className="text-blue-500">*</span></label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg></div>
                 <input 
@@ -362,13 +367,13 @@ export default function Register() {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})} 
                   required 
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-gray-800 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 text-sm font-bold text-gray-800 outline-none transition-all"
                 />
               </div>
             </div>
             
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Buat Kata Sandi <span className="text-emerald-500">*</span></label>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Buat Kata Sandi <span className="text-blue-500">*</span></label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg></div>
                 <input 
@@ -377,12 +382,12 @@ export default function Register() {
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})} 
                   required 
-                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-gray-800 outline-none transition-all" 
+                  className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 text-sm font-bold text-gray-800 outline-none transition-all" 
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors focus:outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors focus:outline-none"
                   title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                 >
                   {showPassword ? (
@@ -414,7 +419,7 @@ export default function Register() {
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-2/3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black py-3.5 rounded-xl hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 transition-all shadow-[0_8px_20px_rgb(16,185,129,0.2)] hover:shadow-[0_8px_25px_rgb(16,185,129,0.4)] active:scale-95 flex justify-center items-center gap-2"
+                className="w-2/3 bg-blue-600 text-white font-black py-3.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-[0_8px_20px_rgb(37,99,235,0.2)] hover:shadow-[0_8px_25px_rgb(37,99,235,0.4)] active:scale-95 flex justify-center items-center gap-2"
               >
                 {isLoading ? (
                   <><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Memproses...</>
@@ -425,7 +430,7 @@ export default function Register() {
         )}
 
         <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-          <button onClick={() => router.push('/login')} className="text-gray-500 font-medium text-sm hover:text-emerald-600 transition-colors inline-flex items-center gap-1.5 group">
+          <button onClick={() => router.push('/login')} className="text-gray-500 font-medium text-sm hover:text-blue-600 transition-colors inline-flex items-center gap-1.5 group">
             <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             Sudah punya akun? <span className="font-bold">Kembali ke Halaman Login</span>
           </button>
@@ -436,7 +441,7 @@ export default function Register() {
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 transition-opacity duration-300">
           <div className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full p-8 text-center animate-in zoom-in-95 duration-300 border border-white/20">
-            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 mb-6 shadow-lg shadow-green-500/40 rotate-3">
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 mb-6 shadow-lg shadow-blue-500/40 rotate-3">
               <svg className="h-10 w-10 text-white -rotate-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
               </svg>

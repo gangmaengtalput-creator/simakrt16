@@ -153,6 +153,15 @@ export default function MainMenu({
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed">Beri akses pungut kas ke warga tertentu sebagai petugas bendahara.</p>
             </button>
+
+            {/* D. Laporan Kas (Buku Kas Umum) */}
+            <button onClick={() => setActiveView('laporan_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-amber-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-amber-700 mb-2 flex items-center justify-between">
+                <span>d. Laporan Kas Bulanan</span>
+                <span className="text-gray-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Cetak rekapan saldo kas, pengeluaran & pemasukan setiap bulan secara kronologis.</p>
+            </button>
           </>
         )}
         

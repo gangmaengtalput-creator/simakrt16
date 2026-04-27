@@ -14,6 +14,8 @@ import BuatSuratView from '../../../components/DashboardKetua/BuatSuratView';
 import PenunjukanPetugasView from '../../../components/DashboardKetua/PenunjukanPetugasView';
 import LaporanView from '../../../components/DashboardKetua/LaporanView';
 import VerifikasiAkunView from '../../../components/DashboardKetua/VerifikasiAkunView';
+// TAMBAHAN: Import komponen LaporanKasView
+import LaporanKasView from '../../../components/DashboardKetua/LaporanKasView';
 
 export const dynamic = 'force-dynamic';
 
@@ -316,6 +318,28 @@ export default function DashboardKetua() {
     };
   }, [isCheckingAuth, router]); 
 
+  // TAMBAHAN: Auto-fetch data Iuran & Pengeluaran saat menu Laporan Kas dibuka
+  useEffect(() => {
+    if (activeView === 'laporan_kas') {
+      const fetchSemuaDataKas = async () => {
+        setIsLoading(true);
+        try {
+          const [{ data: iuran }, { data: pengeluaran }] = await Promise.all([
+            supabase.from('iuran_kas').select('*').order('tanggal_bayar', { ascending: false }),
+            supabase.from('pengeluaran_kas').select('*').order('tanggal', { ascending: false })
+          ]);
+          if (iuran) setListRiwayatIuran(iuran);
+          if (pengeluaran) setListRiwayatPengeluaran(pengeluaran);
+        } catch (err) {
+          console.error("Gagal menarik data Laporan Kas:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchSemuaDataKas();
+    }
+  }, [activeView, supabase]);
+
   // ==========================================
   // RENDER UI
   // ==========================================
@@ -427,6 +451,15 @@ export default function DashboardKetua() {
 
         {activeView === 'verifikasi_akun' && (
           <VerifikasiAkunView setActiveView={setActiveView} akunPending={akunPending} fetchAkunPending={fetchAkunPending} />
+        )}
+
+        {/* TAMBAHAN: View Switcher untuk Laporan Kas */}
+        {activeView === 'laporan_kas' && (
+          <LaporanKasView
+            setActiveView={setActiveView}
+            listRiwayatIuran={listRiwayatIuran}
+            listRiwayatPengeluaran={listRiwayatPengeluaran}
+          />
         )}
       </div>
 

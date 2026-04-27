@@ -49,18 +49,25 @@ export default function LupaPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0B1120] p-4 relative overflow-hidden font-sans">
       
-      {/* BACKGROUND DECORATION MEWAH */}
+      {/* BACKGROUND DECORATION MEWAH (DIUBAH MENJADI BIRU BERSIH) */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/30 rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
 
       {/* KARTU FORM GLASSMORPHISM ELEGANT */}
       <div className="bg-white/95 backdrop-blur-2xl p-8 sm:p-12 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-[440px] border border-white/50 relative z-10 animate-in zoom-in-95 duration-500">
         
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30 rotate-3">
-            <svg className="w-8 h-8 text-white -rotate-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+          
+          {/* LOGO MAENG DITAMBAHKAN DI SINI */}
+          <div className="flex items-center justify-center mx-auto mb-6">
+            <img 
+              src="/logo-maeng.png" 
+              alt="Logo SIMAK RT Maeng" 
+              className="w-24 h-auto object-contain drop-shadow-md" 
+            />
           </div>
+
           <h2 className="text-3xl font-black text-gray-900 tracking-tight">Lupa Sandi?</h2>
           <p className="mt-3 text-sm text-gray-500 font-medium leading-relaxed">
             Masukkan alamat email yang terdaftar. Kami akan mengirimkan tautan untuk membuat kata sandi baru Anda.
@@ -106,13 +113,14 @@ export default function LupaPassword() {
             </div>
           )}
 
+          {/* TOMBOL SUBMIT WARNA BIRU SOLID */}
           <button 
             type="submit" 
             disabled={isLoading || message !== ''}
             className={`w-full py-4 px-4 rounded-xl text-base font-black text-white transition-all transform active:scale-95 flex items-center justify-center gap-2 mt-2 ${
               isLoading || message !== '' 
               ? 'bg-blue-400 cursor-not-allowed shadow-none' 
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-[0_8px_20px_rgb(59,130,246,0.2)] hover:shadow-[0_8px_25px_rgb(59,130,246,0.4)]'
+              : 'bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgb(37,99,235,0.2)] hover:shadow-[0_8px_25px_rgb(37,99,235,0.4)]'
             }`}
           >
             {isLoading ? (
