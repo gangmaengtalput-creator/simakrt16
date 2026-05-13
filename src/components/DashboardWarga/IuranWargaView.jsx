@@ -184,7 +184,7 @@ export default function IuranWargaView({
                   <th className="py-4 px-5 font-bold">Tanggal</th>
                   <th className="py-4 px-5 font-bold">Keterangan Transaksi</th>
                   <th className="py-4 px-5 font-bold text-right text-emerald-700 bg-emerald-50/50">Pemasukan (Rp)</th>
-                  <th className="py-4 px-5 font-bold text-right text-rose-700 bg-rose-50/50">Pengeluaran (Rp)</th>
+                  <th className="py-4 px-5 font-bold text-right text-blue-700 bg-blue-50/50">Pengeluaran (Rp)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -196,7 +196,7 @@ export default function IuranWargaView({
                     <td className="py-4 px-5">
                       <div className="font-bold text-gray-800">{trx.keterangan}</div>
                       <span className={`inline-flex items-center gap-1 mt-1.5 text-[9px] font-black px-2.5 py-0.5 rounded-md uppercase tracking-widest border ${
-                        trx.tipe === 'Pemasukan' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'
+                        trx.tipe === 'Pemasukan' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-blue-50 text-blue-600 border-blue-200'
                       }`}>
                         {trx.tipe === 'Pemasukan' ? (
                           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
@@ -209,7 +209,7 @@ export default function IuranWargaView({
                     <td className="py-4 px-5 text-right font-black text-emerald-600 bg-emerald-50/10">
                       {trx.tipe === 'Pemasukan' ? trx.nominal.toLocaleString('id-ID') : <span className="text-gray-300">-</span>}
                     </td>
-                    <td className="py-4 px-5 text-right font-black text-rose-600 bg-rose-50/10">
+                    <td className="py-4 px-5 text-right font-black text-blue-600 bg-blue-50/10">
                       {trx.tipe === 'Pengeluaran' ? trx.nominal.toLocaleString('id-ID') : <span className="text-gray-300">-</span>}
                     </td>
                   </tr>

@@ -14,7 +14,7 @@ export default function AutoLogout() {
     if (!pathname.startsWith('/dashboard')) return;
 
     let timeoutId;
-    const FIVE_MINUTES = 5 * 60 * 1000; 
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
     const handleLogout = async () => {
       await supabase.auth.signOut();
@@ -23,7 +23,7 @@ export default function AutoLogout() {
 
     const resetTimer = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleLogout, FIVE_MINUTES);
+      timeoutId = setTimeout(handleLogout, TWELVE_HOURS);
     };
 
     const events = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];

@@ -281,43 +281,6 @@ export default function DashboardKetua() {
     checkAuthAndInitData();
   }, [router]);
 
-  // ==========================================
-  // AUTO LOGOUT (IDLE 5 MENIT)
-  // ==========================================
-  useEffect(() => {
-    let timeoutId;
-    const IDLE_TIMEOUT = 5 * 60 * 1000; 
-
-    const handleIdleLogout = async () => {
-      try {
-        await supabase.auth.signOut();
-        showModal(
-          "Sesi Berakhir", 
-          "Sesi Anda telah berakhir secara otomatis karena tidak ada aktivitas.", 
-          "info",
-          () => router.push('/')
-        );
-      } catch (err) {
-        router.push('/');
-      }
-    };
-
-    const resetTimer = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleIdleLogout, IDLE_TIMEOUT);
-    };
-
-    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
-    if (!isCheckingAuth) {
-      events.forEach((event) => window.addEventListener(event, resetTimer));
-      resetTimer();
-    }
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      events.forEach((event) => window.removeEventListener(event, resetTimer));
-    };
-  }, [isCheckingAuth, router]); 
-
   // TAMBAHAN: Auto-fetch data Iuran & Pengeluaran saat menu Laporan Kas dibuka
   useEffect(() => {
     if (activeView === 'laporan_kas') {

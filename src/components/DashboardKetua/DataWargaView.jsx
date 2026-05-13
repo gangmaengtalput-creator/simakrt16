@@ -247,7 +247,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Total Warga Aktif</p><h3 className="text-4xl font-black text-blue-700">{stats.total}</h3></div>
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Kepala Keluarga</p><h3 className="text-4xl font-black text-indigo-700">{stats.kk}</h3></div>
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Laki-laki</p><h3 className="text-4xl font-black text-teal-600">{stats.l}</h3></div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Perempuan</p><h3 className="text-4xl font-black text-pink-600">{stats.p}</h3></div>
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center"><p className="text-xs text-gray-400 font-bold uppercase mb-1">Perempuan</p><h3 className="text-4xl font-black text-blue-600">{stats.p}</h3></div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -322,7 +322,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                       </span>
                     </td>
                     <td className="py-3 px-5 font-bold text-gray-600 text-center">
-                      <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs ${warga.jenis_kelamin?.toUpperCase().startsWith('L') ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
+                      <div className={`w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs ${warga.jenis_kelamin?.toUpperCase().startsWith('L') ? 'bg-blue-100 text-blue-600' : 'bg-blue-100 text-blue-600'}`}>
                         {warga.jenis_kelamin?.toUpperCase().startsWith('L') ? 'L' : 'P'}
                       </div>
                     </td>

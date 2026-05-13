@@ -137,10 +137,10 @@ export default function MainMenu({
             </button>
 
             {/* B. Pengeluaran Kas */}
-            <button onClick={() => setActiveView('pengeluaran_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-rose-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
-              <h3 className="font-bold text-lg text-rose-700 mb-2 flex items-center justify-between">
+            <button onClick={() => setActiveView('pengeluaran_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-blue-700 mb-2 flex items-center justify-between">
                 <span>b. Pengeluaran Kas</span>
-                <span className="text-gray-300 group-hover:text-rose-500 group-hover:translate-x-1 transition-all">→</span>
+                <span className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
               </h3>
               <p className="text-sm text-gray-500 leading-relaxed">Catat dan pantau riwayat pengeluaran operasional dan kegiatan RT.</p>
             </button>

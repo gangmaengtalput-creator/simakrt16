@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function BuatSuratView({
@@ -15,8 +15,13 @@ export default function BuatSuratView({
   fetchPermintaanMasuk
 }) {
   const supabase = getSupabaseClient();
+  const previewFrameRef = useRef(null);
+  const A4_WIDTH_PX = 793.7;
+  const A4_HEIGHT_PX = 1122.5;
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [isMobilePreview, setIsMobilePreview] = useState(false);
   
   // State Edit Surat Khusus (Karena butuh input form ganda)
   const [selectedSurat, setSelectedSurat] = useState(null);
@@ -259,14 +264,14 @@ export default function BuatSuratView({
                   </tr>
                   <tr>
                     <td align="center" style="text-align: center;"><br>Mengetahui,<br>Ketua RW.04</td>
-                    <td align="center" style="text-align: center;"><br><br>Ketua RT.16</td>
+                  <td align="center" style="text-align: center;"><br><span style="visibility:hidden; display:block;">Mengetahui,</span>Ketua RT.16</td>
                   </tr>
                   <tr>
-                    <td align="center" style="height: 95px; text-align: center; vertical-align: bottom;">
+                  <td align="center" style="height: 85px; text-align: center; vertical-align: bottom;">
                       <span style="font-weight: bold; text-decoration: underline; text-transform: uppercase;">HERIYANSAH</span>
                     </td>
-                    <td align="center" style="height: 95px; position: relative; text-align: center; vertical-align: bottom;">
-                      <img src="${ttdUrl}" style="position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); width: 150px; z-index: 10; mix-blend-mode: multiply;" alt="TTD" onerror="this.style.display='none'">
+                  <td align="center" style="height: 85px; position: relative; text-align: center; vertical-align: bottom;">
+                    <img src="${ttdUrl}" style="position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 140px; z-index: 10; mix-blend-mode: multiply;" alt="TTD" onerror="this.style.display='none'">
                       <span style="font-weight: bold; text-decoration: underline; text-transform: uppercase; position: relative; z-index: 1;">GUNTUR BAYU JANTORO</span>
                     </td>
                   </tr>
@@ -386,6 +391,32 @@ export default function BuatSuratView({
     return `${d}/${m}/${y}`;
   };
 
+  useEffect(() => {
+    if (!cetakSurat) return;
+
+    const calculatePreviewScale = () => {
+      const frame = previewFrameRef.current;
+      if (!frame) return;
+      const mobile = window.innerWidth < 640;
+      setIsMobilePreview(mobile);
+      if (!mobile) {
+        setPreviewScale(1);
+        return;
+      }
+
+      const availableWidth = frame.clientWidth - 8;
+      const availableHeight = window.innerHeight - 260;
+      const widthScale = availableWidth / A4_WIDTH_PX;
+      const heightScale = availableHeight / A4_HEIGHT_PX;
+      const nextScale = Math.min(widthScale, heightScale, 1);
+      setPreviewScale(nextScale > 0 ? nextScale : 1);
+    };
+
+    calculatePreviewScale();
+    window.addEventListener('resize', calculatePreviewScale);
+    return () => window.removeEventListener('resize', calculatePreviewScale);
+  }, [cetakSurat]);
+
   return (
     <div className="max-w-5xl mx-auto print:font-serif">
       <div className="mb-4 print:hidden flex gap-2 sticky top-4 z-50">
@@ -494,7 +525,7 @@ export default function BuatSuratView({
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[700px]">
+                <table className="w-full text-left border-collapse min-w-[420px] sm:min-w-[700px] whitespace-normal sm:whitespace-nowrap text-[12px] sm:text-sm">
                   <thead>
                     <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
                       <th className="py-4 px-5 font-bold">Tgl Dibuat</th>
@@ -503,7 +534,7 @@ export default function BuatSuratView({
                       <th className="py-4 px-5 font-bold text-center">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="text-sm divide-y divide-gray-100">
+                  <tbody className="text-[12px] sm:text-sm divide-y divide-gray-100">
                     {riwayatSurat.map((surat) => {
                       if (!surat) return null;
                       const wargaObj = dataWarga.find(w => String(w?.nik) === String(surat?.nik_warga));
@@ -562,10 +593,14 @@ export default function BuatSuratView({
             </div>
           </div>
 
-          <div className="w-full overflow-x-hidden sm:overflow-x-auto bg-gray-100 p-4 sm:p-8 rounded-2xl print:bg-transparent print:p-0 flex justify-center">
+          <div ref={previewFrameRef} className="w-full overflow-hidden sm:overflow-x-auto bg-gray-100 p-2 sm:p-8 rounded-2xl print:bg-transparent print:p-0 flex justify-center items-start">
+            <div
+              className="relative w-full sm:w-auto flex justify-center"
+              style={isMobilePreview ? { height: `${A4_HEIGHT_PX * previewScale}px` } : undefined}
+            >
             <div 
-              className="bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:min-h-[297mm] box-border mx-auto"
-              style={{ padding: '1.5cm 2cm', fontSize: '12pt', lineHeight: '1.2' }}
+              className="bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-black relative w-[210mm] min-w-[210mm] print:w-[210mm] min-h-[297mm] print:min-h-[297mm] box-border p-[1.5cm_2cm] print:p-[1.5cm_2cm] text-[12pt] print:text-[12pt] leading-[1.2]"
+              style={isMobilePreview ? { position: 'absolute', top: 0, left: '50%', transform: `translateX(-50%) scale(${previewScale})`, transformOrigin: 'top center' } : undefined}
             >
               <table width="100%" style={{ width: '100%', borderBottom: '3px solid black', marginBottom: '15px', borderCollapse: 'collapse' }}>
                 <tbody>
@@ -573,7 +608,7 @@ export default function BuatSuratView({
                     <td width="15%" align="left" style={{ width: '15%', textAlign: 'left', verticalAlign: 'middle', paddingBottom: '5px' }}>
                       <img src="/logo-palembang.png" style={{ width: '80px', height: 'auto' }} alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
                     </td>
-                    <td width="70%" align="center" style={{ width: '70%', textAlign: 'center', verticalAlign: 'middle', paddingBottom: '5px', whiteSpace: 'nowrap' }}>
+                    <td width="70%" align="center" style={{ width: '70%', textAlign: 'center', verticalAlign: 'middle', paddingBottom: '5px' }}>
                       <h2 style={{ margin: 0, fontSize: '13.5pt', fontWeight: 'bold', textTransform: 'uppercase' }}>PEMERINTAH KOTA PALEMBANG</h2>
                       <h2 style={{ margin: 0, fontSize: '13.5pt', fontWeight: 'bold', textTransform: 'uppercase' }}>KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
                       <h1 style={{ margin: '2px 0', fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase' }}>KETUA RT.16 RW.04</h1>
@@ -594,12 +629,12 @@ export default function BuatSuratView({
               <table width="100%" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', tableLayout: 'fixed' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Nama</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Nama</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;<b>GUNTUR BAYU JANTORO</b></td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Jabatan</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Jabatan</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;Ketua RT.16</td>
                   </tr>
@@ -611,42 +646,42 @@ export default function BuatSuratView({
               <table width="100%" style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', tableLayout: 'fixed' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Nama</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Nama</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top', textTransform: 'uppercase' }}>&nbsp;&nbsp;{cetakSurat?.warga?.nama || '-'}</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>NIK</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>NIK</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.nik || '-'}</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Jenis Kelamin</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Jenis Kelamin</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{(cetakSurat?.warga?.jenis_kelamin || '').toLowerCase().startsWith('l') ? 'Laki-laki' : 'Perempuan'}</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Tempat/Tgl. Lahir</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Tempat/Tgl. Lahir</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.tempat_lahir || '-'} / {formatTglLahirLayar(cetakSurat?.warga?.tgl_lahir)}</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Bangsa/Agama</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Bangsa/Agama</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;Indonesia / {cetakSurat?.warga?.agama || '-'}</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Pekerjaan</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Pekerjaan</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top', textTransform: 'capitalize' }}>&nbsp;&nbsp;{cetakSurat?.warga?.pekerjaan || '-'}</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Alamat</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Alamat</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.alamat || '-'}<br/>&nbsp;&nbsp;RT.16 RW.04 Kelurahan Talangputri Kec. Plaju Kota Palembang</td>
                   </tr>
                   <tr>
-                    <td style={{ width: '170px', padding: '1.5px 0', verticalAlign: 'top' }}>Kartu Keluarga No</td>
+                    <td style={{ width: '130px', padding: '1.5px 0', verticalAlign: 'top' }}>Kartu Keluarga No</td>
                     <td style={{ width: '20px', textAlign: 'center', padding: '1.5px 0', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '1.5px 0', verticalAlign: 'top' }}>&nbsp;&nbsp;{cetakSurat?.warga?.no_kk || '-'}</td>
                   </tr>
@@ -666,14 +701,16 @@ export default function BuatSuratView({
                   </tr>
                   <tr>
                     <td align="center" style={{ textAlign: 'center' }}><br/>Mengetahui,<br/>Ketua RW.04</td>
-                    <td align="center" style={{ textAlign: 'center' }}><br/><br/>Ketua RT.16</td>
+                <td align="center" style={{ textAlign: 'center' }}>
+                  <span style={{ visibility: 'hidden', display: 'block' }}>Mengetahui,</span>Ketua RT.16
+                </td>
                   </tr>
                   <tr>
-                    <td align="center" style={{ height: '95px', textAlign: 'center', verticalAlign: 'bottom' }}>
+                <td align="center" style={{ height: '85px', textAlign: 'center', verticalAlign: 'bottom' }}>
                       <span style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase' }}>HERIYANSAH</span>
                     </td>
-                    <td align="center" style={{ height: '95px', position: 'relative', textAlign: 'center', verticalAlign: 'bottom' }}>
-                      <img src="/ttd-guntur.png" style={{ position: 'absolute', bottom: '-15px', left: '50%', transform: 'translateX(-50%)', width: '150px', zIndex: 10, mixBlendMode: 'multiply' }} alt="TTD" onError={(e) => { e.target.style.display = 'none'; }} />
+                <td align="center" style={{ height: '85px', position: 'relative', textAlign: 'center', verticalAlign: 'bottom' }}>
+                  <img src="/ttd-guntur.png" style={{ position: 'absolute', bottom: '-10px', left: '50%', transform: 'translateX(-50%)', width: '140px', zIndex: 10, mixBlendMode: 'multiply' }} alt="TTD" onError={(e) => { e.target.style.display = 'none'; }} />
                       <span style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>GUNTUR BAYU JANTORO</span>
                     </td>
                   </tr>
@@ -686,6 +723,7 @@ export default function BuatSuratView({
                 <p style={{ margin: 0 }}>{cetakSurat?.pbb || 'Lunas/Belum Lunas/Tidak Terbit'}</p>
               </div>
 
+            </div>
             </div>
           </div>
         </div>

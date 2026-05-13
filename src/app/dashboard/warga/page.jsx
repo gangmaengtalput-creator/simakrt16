@@ -121,40 +121,6 @@ export default function DashboardWarga() {
   }, [router, supabase]);
 
   // ==========================================
-  // EFFECT 2: AUTO LOGOUT (IDLE 5 MENIT)
-  // ==========================================
-  useEffect(() => {
-    if (isCheckingAuth) return;
-
-    let timeoutId;
-    const IDLE_TIME_LIMIT = 5 * 60 * 1000; // 5 Menit
-
-    const resetTimer = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(async () => {
-        showModal(
-          "Sesi Habis",
-          "Sesi Anda telah berakhir karena tidak ada aktivitas selama 5 menit untuk menjaga keamanan data.",
-          "info",
-          performLogout,
-          false,
-          "Tutup & Keluar"
-        );
-      }, IDLE_TIME_LIMIT);
-    };
-
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    activityEvents.forEach(event => window.addEventListener(event, resetTimer));
-    resetTimer(); 
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      activityEvents.forEach(event => window.removeEventListener(event, resetTimer));
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCheckingAuth]);
-
-  // ==========================================
   // FUNGSI VERIFIKASI WARGA (2FA SEDERHANA)
   // ==========================================
   const verifikasiWarga = async (e) => {

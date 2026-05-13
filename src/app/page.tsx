@@ -185,7 +185,7 @@ export default function Home() {
                       <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md text-blue-900 text-[10px] px-3 py-1.5 rounded-full font-black tracking-widest uppercase shadow-sm">
                         {usulan.jenis_usulan || 'Umum'}
                       </div>
-                      <div className={`absolute top-4 right-4 text-[10px] px-3 py-1.5 rounded-full font-black tracking-widest uppercase shadow-md text-white ${usulan.status === 'Telah Ditindaklanjuti' ? 'bg-emerald-500' : usulan.status === 'Ditolak' ? 'bg-rose-500' : 'bg-amber-500'}`}>
+                      <div className={`absolute top-4 right-4 text-[10px] px-3 py-1.5 rounded-full font-black tracking-widest uppercase shadow-md text-white ${usulan.status === 'Telah Ditindaklanjuti' ? 'bg-emerald-500' : usulan.status === 'Ditolak' ? 'bg-blue-500' : 'bg-amber-500'}`}>
                         {usulan.status || 'Menunggu'}
                       </div>
                       <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-white">

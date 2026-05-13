@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient'; 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = getSupabaseClient();
 
   const [nik, setNik] = useState('');
@@ -15,10 +16,37 @@ export default function Login() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [redirectPath, setRedirectPath] = useState('');
   
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [lockdownTimer, setLockdownTimer] = useState(0);
+
+  useEffect(() => {
+    if (searchParams.get('expired') === 'true') {
+      setShowExpiredModal(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!showSuccessModal || !redirectPath) return;
+
+    const softRedirectTimer = setTimeout(() => {
+      router.replace(redirectPath);
+    }, 900);
+
+    const hardRedirectTimer = setTimeout(() => {
+      if (window.location.pathname === '/login') {
+        window.location.href = redirectPath;
+      }
+    }, 2200);
+
+    return () => {
+      clearTimeout(softRedirectTimer);
+      clearTimeout(hardRedirectTimer);
+    };
+  }, [showSuccessModal, redirectPath, router]);
 
   useEffect(() => {
     const checkLockout = () => {
@@ -157,18 +185,7 @@ export default function Login() {
 
       setIsLoading(false);
       setShowSuccessModal(true);
-      
-      setTimeout(() => {
-        // 1. Hapus sisa cookie auto-logout agar tidak menjebak Middleware
-        document.cookie = "last_active=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-        // 2. Gunakan Hard Redirect alih-alih router.push
-        if (userProfile?.role === 'ketua_rt') {
-          window.location.href = '/dashboard/ketua';
-        } else {
-          window.location.href = '/dashboard/warga';
-        }
-      }, 2000);
+      setRedirectPath(userProfile?.role === 'ketua_rt' ? '/dashboard/ketua' : '/dashboard/warga');
 
     } catch (err) {
       setErrorMsg(`Error: ${err.message || "Gagal menghubungi server."}`);
@@ -201,6 +218,32 @@ export default function Login() {
               </svg>
               <span>Mengarahkan ke dasbor...</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SESI BERAKHIR */}
+      {showExpiredModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md transition-opacity">
+          <div className="bg-white p-8 rounded-[2rem] shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-300 max-w-sm w-full mx-4 border border-white/20">
+            <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mb-5">
+              <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <h3 className="text-xl font-black text-gray-900 text-center">Sesi Berakhir</h3>
+            <p className="mt-2 text-sm text-gray-600 text-center font-medium">
+              Sesi Anda berakhir karena tidak ada aktivitas selama 12 jam. Silakan login kembali.
+            </p>
+            <button
+              onClick={() => {
+                setShowExpiredModal(false);
+                router.replace('/login');
+              }}
+              className="mt-6 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors"
+            >
+              Mengerti
+            </button>
           </div>
         </div>
       )}

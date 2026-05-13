@@ -133,7 +133,7 @@ export default function ManajemenUsulanView({
       <div className="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 overflow-hidden">
         
         {/* HEADER GRADIENT UNGU */}
-        <div className="bg-gradient-to-r from-purple-600 to-fuchsia-600 p-5 flex items-center gap-3">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex items-center gap-3">
           <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm shadow-inner">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
           </div>
@@ -229,7 +229,7 @@ export default function ManajemenUsulanView({
       {showUsulanModal && selectedUsulan && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/70 backdrop-blur-sm p-4 print:hidden animate-in fade-in duration-200">
           <form onSubmit={simpanTindakLanjut} className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] transform transition-all animate-in zoom-in-95 duration-200">
-            <div className="p-6 bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white flex items-center gap-3">
+            <div className="p-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
               </div>

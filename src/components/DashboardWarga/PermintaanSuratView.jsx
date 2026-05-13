@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
@@ -10,8 +10,13 @@ export default function PermintaanSuratView({
   setCetakSurat 
 }) {
   const supabase = getSupabaseClient();
+  const previewFrameRef = useRef(null);
+  const A4_WIDTH_PX = 793.7;
+  const A4_HEIGHT_PX = 1122.5;
   const [formSurat, setFormSurat] = useState({ tujuan: '', keterangan: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [isMobilePreview, setIsMobilePreview] = useState(false);
   
   // ==========================================
   // STATE MODAL GLOBAL PROFESIONAL
@@ -115,6 +120,32 @@ export default function PermintaanSuratView({
     });
   };
 
+  useEffect(() => {
+    if (!cetakSurat) return;
+
+    const calculatePreviewScale = () => {
+      const frame = previewFrameRef.current;
+      if (!frame) return;
+      const mobile = window.innerWidth < 640;
+      setIsMobilePreview(mobile);
+      if (!mobile) {
+        setPreviewScale(1);
+        return;
+      }
+
+      const availableWidth = frame.clientWidth - 8;
+      const availableHeight = window.innerHeight - 240;
+      const widthScale = availableWidth / A4_WIDTH_PX;
+      const heightScale = availableHeight / A4_HEIGHT_PX;
+      const nextScale = Math.min(widthScale, heightScale, 1);
+      setPreviewScale(nextScale > 0 ? nextScale : 1);
+    };
+
+    calculatePreviewScale();
+    window.addEventListener('resize', calculatePreviewScale);
+    return () => window.removeEventListener('resize', calculatePreviewScale);
+  }, [cetakSurat]);
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 relative print:font-serif">
       
@@ -163,7 +194,7 @@ export default function PermintaanSuratView({
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
+              <table className="w-full text-left border-collapse min-w-[420px] sm:min-w-[600px] whitespace-normal sm:whitespace-nowrap text-[12px] sm:text-sm">
                 <thead>
                   <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
                     <th className="py-4 px-5 font-bold">Tanggal</th>
@@ -172,7 +203,7 @@ export default function PermintaanSuratView({
                     <th className="py-4 px-5 font-bold text-center">Dokumen PDF</th>
                   </tr>
                 </thead>
-                <tbody className="text-sm divide-y divide-gray-100">
+                <tbody className="text-[12px] sm:text-sm divide-y divide-gray-100">
                   {listPermintaan.map((item) => (
                     <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
                       <td className="py-4 px-5 text-gray-500 font-medium">{new Date(item.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'})}</td>
@@ -241,11 +272,16 @@ export default function PermintaanSuratView({
             </div>
           </div>
 
-          <div className="w-full overflow-x-hidden sm:overflow-x-auto bg-gray-100 p-4 sm:p-8 rounded-2xl print:bg-white print:p-0 flex justify-center">
+          <div ref={previewFrameRef} className="w-full overflow-hidden sm:overflow-x-auto bg-gray-100 p-2 sm:p-8 rounded-2xl print:bg-white print:p-0 flex justify-center items-start">
+            <div
+              className="relative w-full sm:w-auto flex justify-center"
+              style={isMobilePreview ? { height: `${A4_HEIGHT_PX * previewScale}px` } : undefined}
+            >
             
             {/* KERTAS A4 - RESPONSIVE DI HP, KAKU SAAT PRINT/DESKTOP */}
             <div 
-              className="bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-sm sm:text-[12pt] print:text-[12pt] leading-snug text-justify text-black relative w-full sm:w-[210mm] print:w-[210mm] h-auto sm:min-h-[297mm] print:h-[297mm] p-4 sm:p-[1.5cm_2cm] print:p-[1.5cm_2cm] box-border mx-auto"
+              className="bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-[12pt] print:text-[12pt] leading-snug print:leading-snug text-justify text-black relative w-[210mm] min-w-[210mm] print:w-[210mm] min-h-[297mm] print:h-[297mm] p-[1.5cm_2cm] print:p-[1.5cm_2cm] box-border"
+              style={isMobilePreview ? { position: 'absolute', top: 0, left: '50%', transform: `translateX(-50%) scale(${previewScale})`, transformOrigin: 'top center' } : undefined}
             >
               
               {/* --- KOP SURAT --- */}
@@ -298,18 +334,20 @@ export default function PermintaanSuratView({
               {/* --- AREA TANDA TANGAN --- */}
               <div className="w-full mt-4 break-inside-avoid text-[10pt] sm:text-[12pt] print:text-[12pt] leading-normal flex relative z-10">
                 <div className="w-1/2 text-center">
-                  <p className="invisible mb-1">Palembang, {cetakSurat?.tanggal}</p>
-                  <p className="font-bold">Mengetahui,<br/>Ketua RW.04</p>
-                  <div className="h-16 sm:h-20 print:h-20"></div>
+                  <p className="invisible mb-0.5">Palembang, {cetakSurat?.tanggal}</p>
+                  <p className="font-bold leading-tight">Mengetahui,<br/>Ketua RW.04</p>
+                  <div className="h-12 sm:h-20 print:h-20"></div>
                   <p className="font-bold uppercase underline" style={{ textUnderlineOffset: '2px' }}>HERIYANSAH</p>
                 </div>
                 
                 <div className="w-1/2 text-center flex flex-col items-center">
-                  <p className="mb-1">Palembang, {cetakSurat?.tanggal}</p>
-                  <p className="font-bold"><span className="invisible">Mengetahui,</span><br/>Ketua RT.16</p>
+                  <p className="mb-0.5 sm:mb-1">Palembang, {cetakSurat?.tanggal}</p>
+                  <p className="font-bold leading-tight">
+                    <span className="invisible leading-none block">Mengetahui,</span>Ketua RT.16
+                  </p>
                   
-                  <div className="h-16 sm:h-20 print:h-20 relative w-full flex items-center justify-center">
-                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-15px] sm:bottom-[-30px] print:bottom-[-30px] w-28 sm:w-56 print:w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  <div className="h-12 sm:h-20 print:h-20 relative w-full flex items-center justify-center">
+                    <img src="/ttd-guntur.png" alt="TTD" className="absolute bottom-[-10px] sm:bottom-[-30px] print:bottom-[-30px] w-24 sm:w-56 print:w-56 h-auto z-10 pointer-events-none" style={{ mixBlendMode: 'multiply' }} onError={(e) => { e.target.style.display = 'none'; }} />
                   </div>
 
                   <p className="font-bold uppercase underline relative z-0" style={{ textUnderlineOffset: '2px' }}>
@@ -323,6 +361,7 @@ export default function PermintaanSuratView({
                 <p className="font-bold">Catatan :</p>
                 <p>PBB Tahun {new Date().getFullYear()} : <span className="font-bold">{cetakSurat?.pbb || 'Lunas'}</span></p>
               </div>
+            </div>
             </div>
           </div>
         </div>
