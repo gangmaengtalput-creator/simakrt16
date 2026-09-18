@@ -56,31 +56,37 @@ create policy "Admin dapat membaca foto warga"
   on storage.objects for select to public
   using (bucket_id = 'warga');
 
-create or replace function public.update_warga_nik(p_old_nik text, p_new_nik text)
+drop function if exists public.update_warga_nik(text, text);
+drop function if exists public.update_warga_nik(bigint, bigint);
+
+create function public.update_warga_nik(p_old_nik text, p_new_nik text)
 returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_old_nik text := trim(p_old_nik);
+  v_new_nik text := trim(p_new_nik);
 begin
-  if nullif(trim(p_old_nik), '') is null or nullif(trim(p_new_nik), '') is null then
+  if v_old_nik is null or v_old_nik = '' or v_new_nik is null or v_new_nik = '' then
     raise exception 'NIK lama dan NIK baru wajib diisi';
   end if;
 
-  if trim(p_old_nik) = trim(p_new_nik) then
+  if v_old_nik = v_new_nik then
     return;
   end if;
 
-  if exists (select 1 from public.master_warga where nik = trim(p_new_nik)) then
+  if exists (select 1 from public.master_warga where nik = v_new_nik) then
     raise exception 'NIK baru sudah digunakan warga lain';
   end if;
 
-  update public.profiles set nik = trim(p_new_nik) where nik = trim(p_old_nik);
-  update public.iuran_kas set nik_warga = trim(p_new_nik) where nik_warga = trim(p_old_nik);
-  update public.permintaan_surat set nik_pemohon = trim(p_new_nik) where nik_pemohon = trim(p_old_nik);
-  update public.usulan_warga set nik_pengusul = trim(p_new_nik) where nik_pengusul = trim(p_old_nik);
-  update public.surat_keterangan set nik_warga = trim(p_new_nik) where nik_warga = trim(p_old_nik);
-  update public.master_warga set nik = trim(p_new_nik) where nik = trim(p_old_nik);
+  update public.profiles set nik = v_new_nik where nik = v_old_nik;
+  update public.iuran_kas set nik_warga = v_new_nik where nik_warga = v_old_nik;
+  update public.permintaan_surat set nik_pemohon = v_new_nik where nik_pemohon = v_old_nik;
+  update public.usulan_warga set nik_pengusul = v_new_nik where nik_pengusul = v_old_nik;
+  update public.surat_keterangan set nik_warga = v_new_nik where nik_warga = v_old_nik;
+  update public.master_warga set nik = v_new_nik where nik = v_old_nik;
 
   if not found then
     raise exception 'Warga dengan NIK lama tidak ditemukan';

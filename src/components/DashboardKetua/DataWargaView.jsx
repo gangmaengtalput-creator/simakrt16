@@ -4,6 +4,51 @@ import { getSupabaseClient } from '../../lib/supabaseClient';
 // --- Konstanta Label Etnis (Sama dengan Laporan Triwulan) ---
 const arrEtnis = ['Aceh','Batak','Nias','Jawa','Banten','Cirebon','Betawi','Sunda','Bali','Ambon','Flores','Papua','Samawa','Melayu/Palembang','Minangkabau','Afrika','Australia','China','Amerika','Eropa','Arab','Lainnya'];
 
+const DESIL_KK_FIELDS = [
+  'desil', 'foto_rumah_depan', 'foto_ruang_tamu', 'foto_kamar_mandi',
+  'status_kepemilikan_rumah', 'id_pln', 'id_pdam',
+  'pendapatan_kerja', 'pendapatan_usaha', 'pendapatan_pemberian',
+  'pengeluaran_makan_mingguan', 'pengeluaran_listrik_bulanan',
+  'pengeluaran_lain_bulanan', 'pengeluaran_tahunan',
+];
+
+const scoreDesilRecord = (w) => DESIL_KK_FIELDS.reduce((sum, field) => {
+  const value = w?.[field];
+  if (value == null || value === '') return sum;
+  if (typeof value === 'number' && value === 0) return sum;
+  return sum + 1;
+}, 0);
+
+const pickKkDesilSource = (dataWarga, noKk) => {
+  if (!noKk) return null;
+  const members = dataWarga.filter((w) => w && String(w.no_kk) === String(noKk) && w.status_warga !== 'mantan');
+  if (!members.length) return null;
+  const ranked = [...members].sort((a, b) => scoreDesilRecord(b) - scoreDesilRecord(a));
+  return scoreDesilRecord(ranked[0]) > 0 ? ranked[0] : null;
+};
+
+const extractKkDesilData = (source) => {
+  if (!source) return {};
+  return Object.fromEntries(DESIL_KK_FIELDS.map((field) => [field, source[field]]));
+};
+
+const buildKkDesilPayload = (values) => {
+  const payload = {};
+  DESIL_KK_FIELDS.forEach((field) => {
+    const value = values?.[field];
+    if (field === 'desil') {
+      payload.desil = value ? Number(value) : null;
+      return;
+    }
+    if (typeof value === 'number') {
+      payload[field] = value;
+      return;
+    }
+    payload[field] = value || null;
+  });
+  return payload;
+};
+
 const compressImageTo50Kb = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onerror = () => reject(new Error('Foto tidak dapat dibaca.'));
@@ -37,14 +82,16 @@ const compressImageTo50Kb = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-const DesilFields = ({ values, onChange, onPhotoChange }) => {
+const formatFileSize = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
+
+const DesilFields = ({ values, onChange, onPhotoChange, onPhotoUpload, photoFiles, photoInfo, uploadingPhoto }) => {
   const photoInputRefs = useRef({});
   const numberField = (name, label) => <div><label className="font-bold text-gray-700 block mb-1.5">{label}</label><input type="number" min="0" name={name} value={values?.[name] ?? 0} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50" /></div>;
   const totalPendapatan = ['pendapatan_kerja', 'pendapatan_usaha', 'pendapatan_pemberian'].reduce((sum, key) => sum + Number(values?.[key] || 0), 0);
   const totalPengeluaran = Number(values?.pengeluaran_makan_mingguan || 0) * 52 / 12 + Number(values?.pengeluaran_listrik_bulanan || 0) + Number(values?.pengeluaran_lain_bulanan || 0) + Number(values?.pengeluaran_tahunan || 0) / 12;
-  return <div className="col-span-1 sm:col-span-2 bg-cyan-50 p-5 rounded-2xl border border-cyan-100"><h4 className="font-black text-cyan-800 mb-4">Data Desil Warga</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  return <div className="col-span-1 sm:col-span-2 bg-cyan-50 p-5 rounded-2xl border border-cyan-100"><h4 className="font-black text-cyan-800 mb-1">Data Desil Warga</h4><p className="text-xs text-cyan-700/80 mb-4">Data desil berlaku untuk seluruh anggota KK. Cukup isi atau ubah pada satu NIK dalam KK yang sama.</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <div><label className="font-bold text-gray-700 block mb-1.5">Desil</label><select name="desil" value={values?.desil ?? ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white"><option value="">Pilih desil...</option>{Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></div>
-    {['foto_rumah_depan', 'foto_ruang_tamu', 'foto_kamar_mandi'].map((field) => { const label = field === 'foto_rumah_depan' ? 'Foto rumah tampak depan' : field === 'foto_ruang_tamu' ? 'Foto ruang tamu' : 'Foto kamar mandi'; return <div key={field}><label className="font-bold text-gray-700 block mb-1.5">{label}</label><input ref={(element) => { photoInputRefs.current[`${field}-camera`] = element; }} type="file" accept="image/*" capture="environment" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><input ref={(element) => { photoInputRefs.current[`${field}-file`] = element; }} type="file" accept="*/*" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><input ref={(element) => { photoInputRefs.current[`${field}-gallery`] = element; }} type="file" accept="image/*" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><div className="flex flex-wrap gap-2"><button type="button" onClick={() => photoInputRefs.current[`${field}-camera`]?.click()} className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">Ambil dengan kamera</button><button type="button" onClick={() => photoInputRefs.current[`${field}-file`]?.click()} className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">Pilih file</button><button type="button" onClick={() => photoInputRefs.current[`${field}-gallery`]?.click()} className="px-3 py-2 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold">Pilih galeri</button></div>{values?.[field] && <img src={values[field]} alt={`Pratinjau ${label}`} className="mt-2 h-20 w-28 object-cover rounded-lg border" />}</div>; })}
+    {['foto_rumah_depan', 'foto_ruang_tamu', 'foto_kamar_mandi'].map((field) => { const label = field === 'foto_rumah_depan' ? 'Foto rumah tampak depan' : field === 'foto_ruang_tamu' ? 'Foto ruang tamu' : 'Foto kamar mandi'; const info = photoInfo[field]; const displaySize = info?.compressedSize ?? info?.size; const withinLimit = displaySize != null && displaySize <= 50 * 1024; return <div key={field}><label className="font-bold text-gray-700 block mb-0.5">{label}</label><p className="text-[11px] text-gray-500 mb-1.5">Maks. 50 KB setelah kompresi otomatis</p><input ref={(element) => { photoInputRefs.current[`${field}-camera`] = element; }} type="file" accept="image/*" capture="environment" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><input ref={(element) => { photoInputRefs.current[`${field}-file`] = element; }} type="file" accept="*/*" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><input ref={(element) => { photoInputRefs.current[`${field}-gallery`] = element; }} type="file" accept="image/*" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><div className="flex flex-wrap gap-2"><button type="button" onClick={() => photoInputRefs.current[`${field}-camera`]?.click()} className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">Ambil dengan kamera</button><button type="button" onClick={() => photoInputRefs.current[`${field}-file`]?.click()} className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">Pilih file</button><button type="button" onClick={() => photoInputRefs.current[`${field}-gallery`]?.click()} className="px-3 py-2 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold">Pilih galeri</button>{photoFiles[field] && <button type="button" onClick={() => onPhotoUpload(field)} disabled={uploadingPhoto === field || info?.compressing} className="px-3 py-2 rounded-lg bg-cyan-600 text-white text-xs font-bold disabled:opacity-50">{uploadingPhoto === field ? 'Mengunggah...' : 'Upload'}</button>}</div>{info && <p className={`mt-2 text-xs font-semibold ${info.compressing ? 'text-gray-500' : withinLimit ? 'text-green-700' : 'text-red-600'}`}>{info.compressing ? `Mengompres ${info.name}...` : `${info.name}: asli ${formatFileSize(info.size)}${info.compressedSize != null ? ` → ${formatFileSize(info.compressedSize)}` : ''}${info.compressedSize != null ? (withinLimit ? ' (siap upload, maks. 50 KB)' : ' (melebihi 50 KB)') : ''}`}</p>}{values?.[field] && <img src={values[field]} alt={`Pratinjau ${label}`} className="mt-2 h-20 w-28 object-cover rounded-lg border" />}</div>; })}
     <div><label className="font-bold text-gray-700 block mb-1.5">Status kepemilikan rumah</label><select name="status_kepemilikan_rumah" value={values?.status_kepemilikan_rumah || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white"><option value="">Pilih...</option><option>Milik sendiri</option><option>Sewa</option><option>Menumpang</option><option>Lainnya</option></select></div>
     <div><label className="font-bold text-gray-700 block mb-1.5">ID PLN</label><input name="id_pln" value={values?.id_pln || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
     <div><label className="font-bold text-gray-700 block mb-1.5">ID PDAM</label><input name="id_pdam" value={values?.id_pdam || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
@@ -73,6 +120,8 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const [selectedWarga, setSelectedWarga] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [photoFiles, setPhotoFiles] = useState({});
+  const [photoInfo, setPhotoInfo] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(null);
 
   // State Khusus Dropdown Etnis
   const [showEtnisLainnya, setShowEtnisLainnya] = useState(false);
@@ -211,15 +260,76 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   // ==========================================
   // 6. FUNGSI CRUD WARGA (UPDATED WITH CUSTOM ALERTS)
   // ==========================================
-  const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const getKkDesilData = (noKk) => extractKkDesilData(pickKkDesilSource(dataWarga, noKk));
+
+  const syncDesilToKk = async (noKk, values) => {
+    if (!noKk) return;
+    const { error } = await supabase.from('master_warga').update(buildKkDesilPayload(values)).eq('no_kk', noKk);
+    if (error) throw error;
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'nik') {
+      setFormData({ ...formData, nik: value.replace(/\D/g, '').slice(0, 16) });
+      return;
+    }
+    if (name === 'no_kk') {
+      setFormData({ ...formData, no_kk: value, ...getKkDesilData(value) });
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
+  };
   const handleCustomFieldChange = (key, value) => setFormData({ ...formData, custom_fields: { ...(formData.custom_fields || {}), [key]: value } });
-  const handlePhotoChange = (field, file) => setPhotoFiles((current) => ({ ...current, [field]: file }));
+  const handlePhotoChange = async (field, file) => {
+    if (!file) {
+      setPhotoFiles((current) => { const next = { ...current }; delete next[field]; return next; });
+      setPhotoInfo((current) => { const next = { ...current }; delete next[field]; return next; });
+      return;
+    }
+    setPhotoInfo((current) => ({ ...current, [field]: { name: file.name, size: file.size, compressing: true } }));
+    try {
+      const compressedFile = await compressImageTo50Kb(file);
+      setPhotoFiles((current) => ({ ...current, [field]: compressedFile }));
+      setPhotoInfo((current) => ({ ...current, [field]: { name: file.name, size: file.size, compressedSize: compressedFile.size, compressing: false } }));
+    } catch (error) {
+      setPhotoFiles((current) => ({ ...current, [field]: file }));
+      setPhotoInfo((current) => ({ ...current, [field]: { name: file.name, size: file.size, compressing: false, error: error.message } }));
+      showAlert('Gagal Kompres Foto', error.message, 'error');
+    }
+  };
+
+  const uploadPhoto = async (field) => {
+    const file = photoFiles[field];
+    const nik = String(formData.nik || '').trim();
+    if (!file || !nik) {
+      showAlert('Perhatian', 'Isi NIK terlebih dahulu sebelum mengunggah foto.', 'warning');
+      return;
+    }
+    setUploadingPhoto(field);
+    try {
+      const compressedFile = await compressImageTo50Kb(file);
+      setPhotoInfo((current) => ({ ...current, [field]: { ...current[field], compressedSize: compressedFile.size } }));
+      const filePath = `${nik}/${field}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('warga').upload(filePath, compressedFile, { upsert: true, contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('warga').getPublicUrl(filePath);
+      setFormData((current) => ({ ...current, [field]: urlData.publicUrl }));
+      setPhotoInfo((current) => ({ ...current, [field]: { ...current[field], compressedSize: compressedFile.size } }));
+      setPhotoFiles((current) => { const next = { ...current }; delete next[field]; return next; });
+    } catch (error) {
+      showAlert('Gagal Upload Foto', error.message, 'error');
+    } finally {
+      setUploadingPhoto(null);
+    }
+  };
 
   const uploadPhotos = async (nik) => {
     const uploadedValues = {};
     for (const [field, file] of Object.entries(photoFiles)) {
       if (!file) continue;
       const compressedFile = await compressImageTo50Kb(file);
+      setPhotoInfo((current) => ({ ...current, [field]: { ...current[field], compressedSize: compressedFile.size } }));
       const filePath = `${nik}/${field}_${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage.from('warga').upload(filePath, compressedFile, { upsert: true, contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
@@ -243,11 +353,15 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     e.preventDefault(); 
     setIsProcessing(true);
     try {
-      const uploadedPhotos = await uploadPhotos(formData.nik);
+      const nik = String(formData.nik || '').trim();
+      if (!/^\d{16}$/.test(nik)) throw new Error('NIK harus terdiri dari tepat 16 digit angka.');
+      const uploadedPhotos = await uploadPhotos(nik);
       const { error } = await supabase.from('master_warga').insert([{ ...formData, ...uploadedPhotos, status_warga: 'aktif' }]);
       if (error) throw error;
+      await syncDesilToKk(formData.no_kk, { ...formData, ...uploadedPhotos });
       setShowModal({ ...showModal, add: false }); 
       setPhotoFiles({});
+      setPhotoInfo({});
       fetchWarga(); 
       showAlert("Berhasil", "Data warga baru telah berhasil ditambahkan.", "success");
     } catch (error) {
@@ -264,6 +378,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     const newNik = String(formData.nik || '').trim();
     try {
       if (!newNik) throw new Error('NIK wajib diisi.');
+      if (!/^\d{16}$/.test(newNik)) throw new Error('NIK harus terdiri dari tepat 16 digit angka.');
       if (newNik !== oldNik) {
         const { data: existingWarga, error: existingError } = await supabase.from('master_warga').select('nik').eq('nik', newNik).maybeSingle();
         if (existingError) throw existingError;
@@ -281,8 +396,10 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       }
       const { error } = await supabase.from('master_warga').update(dataToUpdate).eq('nik', newNik);
       if (error) throw error;
+      await syncDesilToKk(formData.no_kk, { ...formData, ...uploadedPhotos });
       setShowModal({ ...showModal, edit: false }); 
       setPhotoFiles({});
+      setPhotoInfo({});
       fetchWarga(); 
       showAlert("Berhasil", "Perubahan data warga berhasil disimpan.", "success");
     } catch (error) {
@@ -313,12 +430,13 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     }
   };
 
-  const openView = (warga) => { setSelectedWarga(warga); setShowModal({ ...showModal, view: true }); };
+  const openView = (warga) => { setSelectedWarga({ ...warga, ...getKkDesilData(warga.no_kk) }); setShowModal({ ...showModal, view: true }); };
   const openDelete = (warga) => { setSelectedWarga(warga); setDeleteReason(''); setDeleteDate(new Date().toISOString().slice(0, 10)); setShowModal({ ...showModal, delete: true }); };
 
   const openAdd = () => { 
     setFormData({ tanggal_masuk: new Date().toISOString().slice(0, 10) });
     setPhotoFiles({});
+    setPhotoInfo({});
     setShowEtnisLainnya(false); 
     setShowModal({ ...showModal, add: true }); 
   };
@@ -326,8 +444,9 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const openEdit = (warga) => { 
     setSelectedWarga(warga); 
     setPhotoFiles({});
+    setPhotoInfo({});
     const existingHp = warga.no_hp || profilesMap[warga.nik] || '';
-    setFormData({ ...warga, no_hp: existingHp }); 
+    setFormData({ ...warga, no_hp: existingHp, ...getKkDesilData(warga.no_kk) });
     setShowEtnisLainnya(warga.etnis && !arrEtnis.slice(0, -1).includes(warga.etnis));
     setShowModal({ ...showModal, edit: true }); 
   };
@@ -647,7 +766,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Alamat Lengkap <span className="text-red-500">*</span></label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" rows="3"></textarea></div>
-                  <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} />
+                  <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} onPhotoUpload={uploadPhoto} photoFiles={photoFiles} photoInfo={photoInfo} uploadingPhoto={uploadingPhoto} />
                 </div>
               </div>
             </div> 
@@ -673,7 +792,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
                   <div><label className="font-bold text-gray-700 block mb-1.5">No. KK <span className="text-red-500">*</span></label><input required name="no_kk" value={formData?.no_kk || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
-                  <div><label className="font-bold text-gray-700 block mb-1.5">NIK <span className="text-red-500">*</span></label><input required name="nik" value={formData?.nik || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
+                  <div><label className="font-bold text-gray-700 block mb-1.5">NIK <span className="text-red-500">*</span></label><input required name="nik" inputMode="numeric" pattern="\d{16}" maxLength={16} value={formData?.nik || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /><p className="text-[11px] text-gray-500 mt-1">Admin dapat mengubah NIK (16 digit). Perubahan ikut memperbarui akun dan riwayat terkait.</p></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Nama Lengkap <span className="text-red-500">*</span></label><input required name="nama" value={formData?.nama || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
                   
                   <div>
@@ -716,7 +835,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Alamat Lengkap <span className="text-red-500">*</span></label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" rows="3"></textarea></div>
-                  <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} />
+                  <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} onPhotoUpload={uploadPhoto} photoFiles={photoFiles} photoInfo={photoInfo} uploadingPhoto={uploadingPhoto} />
                   <CustomFields definitions={customFieldDefinitions} values={formData.custom_fields} onChange={handleCustomFieldChange} />
                 </div>
               </div>
