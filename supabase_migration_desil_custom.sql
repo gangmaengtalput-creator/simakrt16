@@ -15,6 +15,7 @@ alter table public.master_warga
   add column if not exists pengeluaran_listrik_bulanan numeric default 0,
   add column if not exists pengeluaran_lain_bulanan numeric default 0,
   add column if not exists pengeluaran_tahunan numeric default 0,
+  add column if not exists desil integer check (desil between 1 and 10),
   add column if not exists custom_fields jsonb not null default '{}'::jsonb;
 
 create table if not exists public.custom_field_definitions (
@@ -32,5 +33,23 @@ begin
   if not exists (select 1 from pg_policies where policyname = 'Admin dapat mengelola definisi field' and tablename = 'custom_field_definitions') then
     create policy "Admin dapat mengelola definisi field"
       on public.custom_field_definitions for all using (true) with check (true);
+  end if;
+end $$;
+
+insert into storage.buckets (id, name, public)
+values ('warga', 'warga', true)
+on conflict (id) do update set public = true;
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where policyname = 'Admin dapat mengunggah foto warga' and tablename = 'objects') then
+    create policy "Admin dapat mengunggah foto warga"
+      on storage.objects for insert to authenticated
+      with check (bucket_id = 'warga');
+  end if;
+  if not exists (select 1 from pg_policies where policyname = 'Admin dapat memperbarui foto warga' and tablename = 'objects') then
+    create policy "Admin dapat memperbarui foto warga"
+      on storage.objects for update to authenticated
+      using (bucket_id = 'warga') with check (bucket_id = 'warga');
   end if;
 end $$;

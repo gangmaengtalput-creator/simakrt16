@@ -4,14 +4,46 @@ import { getSupabaseClient } from '../../lib/supabaseClient';
 // --- Konstanta Label Etnis (Sama dengan Laporan Triwulan) ---
 const arrEtnis = ['Aceh','Batak','Nias','Jawa','Banten','Cirebon','Betawi','Sunda','Bali','Ambon','Flores','Papua','Samawa','Melayu/Palembang','Minangkabau','Afrika','Australia','China','Amerika','Eropa','Arab','Lainnya'];
 
-const DesilFields = ({ values, onChange }) => {
+const compressImageTo50Kb = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onerror = () => reject(new Error('Foto tidak dapat dibaca.'));
+  reader.onload = (event) => {
+    const image = new Image();
+    image.onerror = () => reject(new Error('Format foto tidak didukung.'));
+    image.onload = () => {
+      let maxWidth = 1280;
+      let quality = 0.8;
+      const compress = () => {
+        const scale = Math.min(1, maxWidth / image.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error('Foto gagal dikompres.'));
+          if (blob.size <= 50 * 1024 || (quality <= 0.1 && maxWidth <= 320)) {
+            resolve(new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' }));
+            return;
+          }
+          if (quality > 0.1) quality = Math.max(0.1, quality - 0.1);
+          else { quality = 0.8; maxWidth = Math.round(maxWidth * 0.8); }
+          compress();
+        }, 'image/jpeg', quality);
+      };
+      compress();
+    };
+    image.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+const DesilFields = ({ values, onChange, onPhotoChange }) => {
   const numberField = (name, label) => <div><label className="font-bold text-gray-700 block mb-1.5">{label}</label><input type="number" min="0" name={name} value={values?.[name] ?? 0} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50" /></div>;
   const totalPendapatan = ['pendapatan_kerja', 'pendapatan_usaha', 'pendapatan_pemberian'].reduce((sum, key) => sum + Number(values?.[key] || 0), 0);
   const totalPengeluaran = Number(values?.pengeluaran_makan_mingguan || 0) * 52 / 12 + Number(values?.pengeluaran_listrik_bulanan || 0) + Number(values?.pengeluaran_lain_bulanan || 0) + Number(values?.pengeluaran_tahunan || 0) / 12;
   return <div className="col-span-1 sm:col-span-2 bg-cyan-50 p-5 rounded-2xl border border-cyan-100"><h4 className="font-black text-cyan-800 mb-4">Data Desil Warga</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <div><label className="font-bold text-gray-700 block mb-1.5">Foto rumah tampak depan (URL)</label><input name="foto_rumah_depan" value={values?.foto_rumah_depan || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
-    <div><label className="font-bold text-gray-700 block mb-1.5">Foto ruang tamu (URL)</label><input name="foto_ruang_tamu" value={values?.foto_ruang_tamu || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
-    <div><label className="font-bold text-gray-700 block mb-1.5">Foto kamar mandi (URL)</label><input name="foto_kamar_mandi" value={values?.foto_kamar_mandi || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
+    <div><label className="font-bold text-gray-700 block mb-1.5">Desil</label><select name="desil" value={values?.desil ?? ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white"><option value="">Pilih desil...</option>{Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></div>
+    {['foto_rumah_depan', 'foto_ruang_tamu', 'foto_kamar_mandi'].map((field) => <div key={field}><label className="font-bold text-gray-700 block mb-1.5">{field === 'foto_rumah_depan' ? 'Foto rumah tampak depan' : field === 'foto_ruang_tamu' ? 'Foto ruang tamu' : 'Foto kamar mandi'}</label><input type="file" accept="image/*" capture="environment" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white text-sm" />{values?.[field] && <img src={values[field]} alt="Pratinjau" className="mt-2 h-20 w-28 object-cover rounded-lg border" />}</div>)}
     <div><label className="font-bold text-gray-700 block mb-1.5">Status kepemilikan rumah</label><select name="status_kepemilikan_rumah" value={values?.status_kepemilikan_rumah || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white"><option value="">Pilih...</option><option>Milik sendiri</option><option>Sewa</option><option>Menumpang</option><option>Lainnya</option></select></div>
     <div><label className="font-bold text-gray-700 block mb-1.5">ID PLN</label><input name="id_pln" value={values?.id_pln || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
     <div><label className="font-bold text-gray-700 block mb-1.5">ID PDAM</label><input name="id_pdam" value={values?.id_pdam || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
@@ -39,6 +71,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const [deleteDate, setDeleteDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedWarga, setSelectedWarga] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [photoFiles, setPhotoFiles] = useState({});
 
   // State Khusus Dropdown Etnis
   const [showEtnisLainnya, setShowEtnisLainnya] = useState(false);
@@ -179,6 +212,21 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   // ==========================================
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleCustomFieldChange = (key, value) => setFormData({ ...formData, custom_fields: { ...(formData.custom_fields || {}), [key]: value } });
+  const handlePhotoChange = (field, file) => setPhotoFiles((current) => ({ ...current, [field]: file }));
+
+  const uploadPhotos = async (nik) => {
+    const uploadedValues = {};
+    for (const [field, file] of Object.entries(photoFiles)) {
+      if (!file) continue;
+      const compressedFile = await compressImageTo50Kb(file);
+      const filePath = `${nik}/${field}_${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('warga').upload(filePath, compressedFile, { upsert: true, contentType: 'image/jpeg' });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('warga').getPublicUrl(filePath);
+      uploadedValues[field] = urlData.publicUrl;
+    }
+    return uploadedValues;
+  };
 
   const handleEtnisChange = (e) => {
     if (e.target.value === 'Lainnya') {
@@ -193,30 +241,59 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const saveAdd = async (e) => {
     e.preventDefault(); 
     setIsProcessing(true);
-    const { error } = await supabase.from('master_warga').insert([{ ...formData, status_warga: 'aktif' }]);
-    setIsProcessing(false);
-    
-    if (!error) { 
+    try {
+      const uploadedPhotos = await uploadPhotos(formData.nik);
+      const { error } = await supabase.from('master_warga').insert([{ ...formData, ...uploadedPhotos, status_warga: 'aktif' }]);
+      if (error) throw error;
       setShowModal({ ...showModal, add: false }); 
+      setPhotoFiles({});
       fetchWarga(); 
       showAlert("Berhasil", "Data warga baru telah berhasil ditambahkan.", "success");
-    } else {
+    } catch (error) {
       showAlert("Gagal Menyimpan", error.message, "error");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const saveEdit = async (e) => {
     e.preventDefault(); 
     setIsProcessing(true);
-    const { error } = await supabase.from('master_warga').update(formData).eq('nik', selectedWarga?.nik);
-    setIsProcessing(false);
-    
-    if (!error) { 
+    const oldNik = String(selectedWarga?.nik || '').trim();
+    const newNik = String(formData.nik || '').trim();
+    try {
+      if (!newNik) throw new Error('NIK wajib diisi.');
+      if (newNik !== oldNik) {
+        const { data: existingWarga, error: existingError } = await supabase.from('master_warga').select('nik').eq('nik', newNik).maybeSingle();
+        if (existingError) throw existingError;
+        if (existingWarga) throw new Error('NIK baru sudah digunakan warga lain.');
+      }
+
+      const uploadedPhotos = await uploadPhotos(newNik);
+      const { nik, ...dataToUpdate } = { ...formData, ...uploadedPhotos };
+      if (newNik !== oldNik) {
+        const references = [
+          ['profiles', 'nik'],
+          ['iuran_kas', 'nik_warga'],
+          ['permintaan_surat', 'nik_pemohon'],
+          ['usulan_warga', 'nik_pengusul'],
+          ['surat_keterangan', 'nik_warga']
+        ];
+        for (const [table, column] of references) {
+          const { error } = await supabase.from(table).update({ [column]: newNik }).eq(column, oldNik);
+          if (error) throw error;
+        }
+      }
+      const { error } = await supabase.from('master_warga').update(dataToUpdate).eq('nik', oldNik);
+      if (error) throw error;
       setShowModal({ ...showModal, edit: false }); 
+      setPhotoFiles({});
       fetchWarga(); 
       showAlert("Berhasil", "Perubahan data warga berhasil disimpan.", "success");
-    } else {
+    } catch (error) {
       showAlert("Gagal Memperbarui", error.message, "error");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -246,12 +323,14 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
 
   const openAdd = () => { 
     setFormData({ tanggal_masuk: new Date().toISOString().slice(0, 10) });
+    setPhotoFiles({});
     setShowEtnisLainnya(false); 
     setShowModal({ ...showModal, add: true }); 
   };
 
   const openEdit = (warga) => { 
     setSelectedWarga(warga); 
+    setPhotoFiles({});
     const existingHp = warga.no_hp || profilesMap[warga.nik] || '';
     setFormData({ ...warga, no_hp: existingHp }); 
     setShowEtnisLainnya(warga.etnis && !arrEtnis.slice(0, -1).includes(warga.etnis));
@@ -495,7 +574,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   <p className="font-medium text-gray-700 text-sm leading-relaxed">{selectedWarga.alamat || '-'}</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-cyan-100 sm:col-span-2"><h3 className="text-xs font-black text-cyan-700 tracking-widest mb-4">DATA DESIL</h3><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[['foto_rumah_depan','Rumah depan'],['foto_ruang_tamu','Ruang tamu'],['foto_kamar_mandi','Kamar mandi']].map(([key, label]) => selectedWarga[key] ? <div key={key}><p className="text-xs font-bold text-gray-500 mb-1">{label}</p><img src={selectedWarga[key]} alt={label} className="w-full h-32 object-cover rounded-xl border" /></div> : <div key={key} className="h-32 rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-400">{label} belum ada</div>)}</div><div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm"><div><span className="text-gray-400 block text-xs">ID PLN</span><strong>{selectedWarga.id_pln || '-'}</strong></div><div><span className="text-gray-400 block text-xs">ID PDAM</span><strong>{selectedWarga.id_pdam || '-'}</strong></div><div><span className="text-gray-400 block text-xs">Kepemilikan</span><strong>{selectedWarga.status_kepemilikan_rumah || '-'}</strong></div><div><span className="text-gray-400 block text-xs">Tabungan bulanan</span><strong>{Number(selectedWarga.pendapatan_kerja || 0) + Number(selectedWarga.pendapatan_usaha || 0) + Number(selectedWarga.pendapatan_pemberian || 0) > (Number(selectedWarga.pengeluaran_makan_mingguan || 0) * 52 / 12 + Number(selectedWarga.pengeluaran_listrik_bulanan || 0) + Number(selectedWarga.pengeluaran_lain_bulanan || 0) + Number(selectedWarga.pengeluaran_tahunan || 0) / 12) ? 'Ya' : 'Tidak'}</strong></div></div></div>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-cyan-100 sm:col-span-2"><h3 className="text-xs font-black text-cyan-700 tracking-widest mb-4">DATA DESIL</h3><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[['foto_rumah_depan','Rumah depan'],['foto_ruang_tamu','Ruang tamu'],['foto_kamar_mandi','Kamar mandi']].map(([key, label]) => selectedWarga[key] ? <div key={key}><p className="text-xs font-bold text-gray-500 mb-1">{label}</p><img src={selectedWarga[key]} alt={label} className="w-full h-32 object-cover rounded-xl border" /></div> : <div key={key} className="h-32 rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-400">{label} belum ada</div>)}</div><div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4 text-sm"><div><span className="text-gray-400 block text-xs">Desil</span><strong>{selectedWarga.desil || '-'}</strong></div><div><span className="text-gray-400 block text-xs">ID PLN</span><strong>{selectedWarga.id_pln || '-'}</strong></div><div><span className="text-gray-400 block text-xs">ID PDAM</span><strong>{selectedWarga.id_pdam || '-'}</strong></div><div><span className="text-gray-400 block text-xs">Kepemilikan</span><strong>{selectedWarga.status_kepemilikan_rumah || '-'}</strong></div><div><span className="text-gray-400 block text-xs">Tabungan bulanan</span><strong>{Number(selectedWarga.pendapatan_kerja || 0) + Number(selectedWarga.pendapatan_usaha || 0) + Number(selectedWarga.pendapatan_pemberian || 0) > (Number(selectedWarga.pengeluaran_makan_mingguan || 0) * 52 / 12 + Number(selectedWarga.pengeluaran_listrik_bulanan || 0) + Number(selectedWarga.pengeluaran_lain_bulanan || 0) + Number(selectedWarga.pengeluaran_tahunan || 0) / 12) ? 'Ya' : 'Tidak'}</strong></div></div></div>
 
                 {selectedWarga.status_warga === 'mantan' && selectedWarga.alasan_hapus && (
                   <div className="bg-red-50 p-5 rounded-2xl border border-red-200 sm:col-span-2 relative overflow-hidden">
@@ -573,6 +652,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Alamat Lengkap <span className="text-red-500">*</span></label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" rows="3"></textarea></div>
+                  <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} />
                 </div>
               </div>
             </div> 
@@ -641,7 +721,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Alamat Lengkap <span className="text-red-500">*</span></label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" rows="3"></textarea></div>
-                  <DesilFields values={formData} onChange={handleInputChange} />
+                  <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} />
                   <CustomFields definitions={customFieldDefinitions} values={formData.custom_fields} onChange={handleCustomFieldChange} />
                 </div>
               </div>
