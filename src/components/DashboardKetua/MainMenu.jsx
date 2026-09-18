@@ -1,0 +1,195 @@
+import React, { useState } from 'react';
+
+export default function MainMenu({
+  totalSaldoAllTime,
+  totalPengeluaranAllTime,
+  fetchWarga,
+  fetchPermintaanMasuk,
+  goToBuatSurat,
+  fetchUsulan,
+  fetchRiwayatIuran,
+  fetchAkunPending, 
+  akunPending,
+  setActiveView,
+  goToCustomFields
+}) {
+  // State untuk mengontrol tampilan sub-menu
+  const [subMenu, setSubMenu] = useState(null);
+
+  // Hitung saldo riil
+  const saldoRiil = totalSaldoAllTime - totalPengeluaranAllTime;
+
+  return (
+    <div className="max-w-7xl mx-auto print:hidden">
+      
+      {/* KARTU SALDO KAS RT */}
+      <div className="bg-[#fcd34d] p-6 sm:p-8 rounded-2xl shadow-sm mb-8 flex justify-between items-center text-yellow-900 relative overflow-hidden">
+        <div className="relative z-10">
+          <p className="text-sm font-bold uppercase tracking-widest text-yellow-700/80 mb-1">Total Saldo Kas RT</p>
+          <h2 className="text-4xl sm:text-5xl font-black tracking-tight">Rp {saldoRiil.toLocaleString('id-ID')}</h2>
+        </div>
+        {/* Dekorasi Icon Latar Belakang */}
+        <div className="absolute right-[-20px] top-[-20px] opacity-20 pointer-events-none">
+          <svg className="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>
+        </div>
+      </div>
+
+      {/* TOMBOL KEMBALI (Muncul jika sedang di dalam sub-menu) */}
+      {subMenu === 'keuangan' && (
+        <div className="mb-4 animate-fade-in">
+          <button 
+            onClick={() => setSubMenu(null)} 
+            className="text-sm text-emerald-700 font-bold hover:underline bg-emerald-50 px-4 py-2 rounded-lg transition-all"
+          >
+            &larr; Kembali ke Menu Utama
+          </button>
+        </div>
+      )}
+
+      {/* GRID MENU - Diubah menjadi 3 Kolom agar seimbang */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-fade-in">
+        
+        {/* MENU UTAMA (Hanya Tampil Jika Tidak Ada Sub-Menu yang Aktif) */}
+        {!subMenu && (
+          <>
+            {/* 1. Data Warga */}
+            <button onClick={fetchWarga} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-blue-700 mb-2 flex items-center justify-between">
+                <span>1. Data Warga</span>
+                <span className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Kelola database kependudukan, lihat statistik usia warga, dan mutasi data.</p>
+            </button>
+
+            {/* 2. Kotak Masuk Surat */}
+            <button onClick={fetchPermintaanMasuk} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-orange-600 mb-2 flex items-center justify-between">
+                <span>2. Kotak Masuk Surat</span>
+                <span className="text-gray-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Lihat dan proses permohonan surat pengantar dari dasbor warga.</p>
+            </button>
+
+            {/* 3. Buat Surat Manual */}
+            <button onClick={goToBuatSurat} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-green-700 mb-2 flex items-center justify-between">
+                <span>3. Buat Surat Manual</span>
+                <span className="text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Buat nomor surat otomatis dan cetak surat resmi format kelurahan.</p>
+            </button>
+
+            {/* 4. Manajemen Usulan */}
+            <button onClick={fetchUsulan} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-purple-700 mb-2 flex items-center justify-between">
+                <span>4. Manajemen Usulan</span>
+                <span className="text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Tinjau usulan warga, update status proyek, & upload foto tindak lanjut.</p>
+            </button>
+
+            {/* 5. Keuangan RT (Membuka Sub-Menu) */}
+            <button onClick={() => setSubMenu('keuangan')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-emerald-700 mb-2 flex items-center justify-between">
+                <span>5. Keuangan RT</span>
+                <span className="text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Kelola Pemungutan Iuran, Pengeluaran Kas, dan Penugasan Bendahara.</p>
+            </button>
+
+            {/* 6. Laporan RT */}
+            <button onClick={() => setActiveView('laporan')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-gray-800 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-gray-800 mb-2 flex items-center justify-between">
+                <span>6. Laporan RT</span>
+                <span className="text-gray-300 group-hover:text-gray-800 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Cetak Laporan Triwulan dan Data Dasar Keluarga (Format PDF).</p>
+            </button>
+
+            {/* 7. Verifikasi Akun (Sekarang Aman di Dalam Menu Utama) */}
+            <button onClick={fetchAkunPending} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-400 hover:shadow-md hover:-translate-y-1 transition-all text-left group relative">
+              <h3 className="font-bold text-lg text-yellow-600 mb-2 flex items-center justify-between">
+                <span>7. Verifikasi Akun Baru</span>
+                <span className="text-gray-300 group-hover:text-yellow-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Terima (ACC) pendaftaran akun warga baru agar bisa login.</p>
+              
+              {/* Notifikasi Badge Merah jika ada yang pending */}
+              {akunPending && akunPending.length > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-black w-6 h-6 rounded-full flex items-center justify-center shadow-md animate-pulse">
+                  {akunPending.length}
+                </div>
+              )}
+            </button>
+
+            {/* 8. Penggalangan Dana */}
+            <button onClick={() => setActiveView('penggalangan_dana')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-teal-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-teal-700 mb-2 flex items-center justify-between">
+                <span>8. Penggalangan Dana</span>
+                <span className="text-gray-300 group-hover:text-teal-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Buat proposal penggalangan dana & kelola sponsor untuk kegiatan lingkungan RT.</p>
+            </button>
+
+            <button onClick={goToCustomFields} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-cyan-600 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-cyan-700 mb-2 flex items-center justify-between"><span>9. Field Custom Admin</span><span className="text-gray-300 group-hover:text-cyan-600 group-hover:translate-x-1 transition-all">→</span></h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Tambahkan field tambahan untuk data warga dan data desil.</p>
+            </button>
+          </>
+        )}
+
+
+        {/* SUB-MENU: KEUANGAN RT */}
+        {subMenu === 'keuangan' && (
+          <>
+            {/* A. Pemungutan Iuran */}
+            <button onClick={fetchRiwayatIuran} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-emerald-700 mb-2 flex items-center justify-between">
+                <span>a. Pemungutan Iuran</span>
+                <span className="text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Catat pembayaran kas bulanan warga dan kelola status tagihan KK.</p>
+            </button>
+
+            {/* B. Pengeluaran Kas */}
+            <button onClick={() => setActiveView('pengeluaran_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-blue-700 mb-2 flex items-center justify-between">
+                <span>b. Pengeluaran Kas</span>
+                <span className="text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Catat dan pantau riwayat pengeluaran operasional dan kegiatan RT.</p>
+            </button>
+
+            {/* C. Penunjukan Petugas */}
+            <button onClick={() => setActiveView('penunjukan_petugas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-cyan-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-cyan-700 mb-2 flex items-center justify-between">
+                <span>c. Penugasan Petugas</span>
+                <span className="text-gray-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Beri akses pungut kas ke warga tertentu sebagai petugas bendahara.</p>
+            </button>
+
+            {/* D. Laporan Kas (Buku Kas Umum) */}
+            <button onClick={() => setActiveView('laporan_kas')} className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-amber-500 hover:shadow-md hover:-translate-y-1 transition-all text-left group">
+              <h3 className="font-bold text-lg text-amber-700 mb-2 flex items-center justify-between">
+                <span>d. Laporan Kas Bulanan</span>
+                <span className="text-gray-300 group-hover:text-amber-500 group-hover:translate-x-1 transition-all">→</span>
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">Cetak rekapan saldo kas, pengeluaran & pemasukan setiap bulan secara kronologis.</p>
+            </button>
+          </>
+        )}
+        
+      </div>
+      
+      {/* Tambahan class untuk animasi perpindahan menu */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
+    </div>
+  );
+}

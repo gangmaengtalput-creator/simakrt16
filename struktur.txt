@@ -1,0 +1,92 @@
+.
+├── AGENTS.md
+├── CLAUDE.md
+├── eslint.config.mjs
+├── netlify.toml
+├── next.config.ts
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── public
+│   ├── file.svg
+│   ├── globe.svg
+│   ├── logo-maeng.png
+│   ├── logo-palembang.png
+│   ├── manifest.webmanifest
+│   ├── next.svg
+│   ├── ttd-guntur.png
+│   ├── vercel.svg
+│   └── window.svg
+├── README.md
+├── src
+│   ├── app
+│   │   ├── api
+│   │   │   ├── auth
+│   │   │   │   ├── login
+│   │   │   │   │   └── route.js
+│   │   │   │   ├── logout
+│   │   │   │   │   └── route.js
+│   │   │   │   └── session
+│   │   │   │       └── route.js
+│   │   │   ├── notify-acc
+│   │   │   │   └── route.js
+│   │   │   ├── notify-register
+│   │   │   │   └── route.js
+│   │   │   ├── notify-warga
+│   │   │   │   └── route.js
+│   │   │   └── send-email
+│   │   │       └── route.js
+│   │   ├── auth
+│   │   │   └── callback
+│   │   │       └── route.js
+│   │   ├── dashboard
+│   │   │   ├── ketua
+│   │   │   │   └── page.jsx
+│   │   │   └── warga
+│   │   │       └── page.jsx
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── login
+│   │   │   └── page.jsx
+│   │   ├── lupa-password
+│   │   │   └── page.jsx
+│   │   ├── page.tsx
+│   │   ├── register
+│   │   │   └── page.jsx
+│   │   └── reset-password
+│   │       └── page.jsx
+│   ├── components
+│   │   ├── AutoLogout.jsx
+│   │   ├── CardPenggalangan.jsx
+│   │   ├── DashboardKetua
+│   │   │   ├── BuatSuratView.jsx
+│   │   │   ├── DataWargaView.jsx
+│   │   │   ├── IuranKasView.jsx
+│   │   │   ├── LaporanKasView.jsx
+│   │   │   ├── LaporanView.jsx
+│   │   │   ├── MainMenu.jsx
+│   │   │   ├── ManajemenUsulanView.jsx
+│   │   │   ├── PengeluaranKasView.jsx
+│   │   │   ├── PenggalanganDanaView.jsx
+│   │   │   ├── PenunjukanPetugasView.jsx
+│   │   │   ├── PermintaanMasukView.jsx
+│   │   │   └── VerifikasiAkunView.jsx
+│   │   ├── DashboardWarga
+│   │   │   ├── IuranWargaView.jsx
+│   │   │   ├── PermintaanSuratView.jsx
+│   │   │   ├── PetugasPemungutanView.jsx
+│   │   │   └── UsulanWargaView.jsx
+│   │   ├── PwaRegister.jsx
+│   │   └── ui
+│   │       └── alert.jsx
+│   ├── lib
+│   │   ├── supabase
+│   │   │   └── server.js
+│   │   └── supabaseClient.js
+│   └── proxy.js
+├── struktur.txt
+└── tsconfig.json
+
+28 directories, 62 files

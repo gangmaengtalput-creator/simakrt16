@@ -1,0 +1,32 @@
+{
+  "name": "SIMAKRT Lrg Maeng",
+  "short_name": "SIMAKRT",
+  "description": "Sistem Informasi Manajemen Kependudukan RT.16 Kelurahan Talangputri",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0B1120",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-maeng.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-maeng.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-maeng.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
