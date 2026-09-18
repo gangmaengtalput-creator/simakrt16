@@ -40,16 +40,52 @@ insert into storage.buckets (id, name, public)
 values ('warga', 'warga', true)
 on conflict (id) do update set public = true;
 
-do $$
+drop policy if exists "Admin dapat mengunggah foto warga" on storage.objects;
+drop policy if exists "Admin dapat memperbarui foto warga" on storage.objects;
+drop policy if exists "Admin dapat membaca foto warga" on storage.objects;
+
+create policy "Admin dapat mengunggah foto warga"
+  on storage.objects for insert to public
+  with check (bucket_id = 'warga');
+
+create policy "Admin dapat memperbarui foto warga"
+  on storage.objects for update to public
+  using (bucket_id = 'warga') with check (bucket_id = 'warga');
+
+create policy "Admin dapat membaca foto warga"
+  on storage.objects for select to public
+  using (bucket_id = 'warga');
+
+create or replace function public.update_warga_nik(p_old_nik text, p_new_nik text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
-  if not exists (select 1 from pg_policies where policyname = 'Admin dapat mengunggah foto warga' and tablename = 'objects') then
-    create policy "Admin dapat mengunggah foto warga"
-      on storage.objects for insert to authenticated
-      with check (bucket_id = 'warga');
+  if nullif(trim(p_old_nik), '') is null or nullif(trim(p_new_nik), '') is null then
+    raise exception 'NIK lama dan NIK baru wajib diisi';
   end if;
-  if not exists (select 1 from pg_policies where policyname = 'Admin dapat memperbarui foto warga' and tablename = 'objects') then
-    create policy "Admin dapat memperbarui foto warga"
-      on storage.objects for update to authenticated
-      using (bucket_id = 'warga') with check (bucket_id = 'warga');
+
+  if trim(p_old_nik) = trim(p_new_nik) then
+    return;
   end if;
-end $$;
+
+  if exists (select 1 from public.master_warga where nik = trim(p_new_nik)) then
+    raise exception 'NIK baru sudah digunakan warga lain';
+  end if;
+
+  update public.profiles set nik = trim(p_new_nik) where nik = trim(p_old_nik);
+  update public.iuran_kas set nik_warga = trim(p_new_nik) where nik_warga = trim(p_old_nik);
+  update public.permintaan_surat set nik_pemohon = trim(p_new_nik) where nik_pemohon = trim(p_old_nik);
+  update public.usulan_warga set nik_pengusul = trim(p_new_nik) where nik_pengusul = trim(p_old_nik);
+  update public.surat_keterangan set nik_warga = trim(p_new_nik) where nik_warga = trim(p_old_nik);
+  update public.master_warga set nik = trim(p_new_nik) where nik = trim(p_old_nik);
+
+  if not found then
+    raise exception 'Warga dengan NIK lama tidak ditemukan';
+  end if;
+end;
+$$;
+
+grant execute on function public.update_warga_nik(text, text) to anon, authenticated;

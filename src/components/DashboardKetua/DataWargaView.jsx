@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
 // --- Konstanta Label Etnis (Sama dengan Laporan Triwulan) ---
@@ -38,12 +38,13 @@ const compressImageTo50Kb = (file) => new Promise((resolve, reject) => {
 });
 
 const DesilFields = ({ values, onChange, onPhotoChange }) => {
+  const photoInputRefs = useRef({});
   const numberField = (name, label) => <div><label className="font-bold text-gray-700 block mb-1.5">{label}</label><input type="number" min="0" name={name} value={values?.[name] ?? 0} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50" /></div>;
   const totalPendapatan = ['pendapatan_kerja', 'pendapatan_usaha', 'pendapatan_pemberian'].reduce((sum, key) => sum + Number(values?.[key] || 0), 0);
   const totalPengeluaran = Number(values?.pengeluaran_makan_mingguan || 0) * 52 / 12 + Number(values?.pengeluaran_listrik_bulanan || 0) + Number(values?.pengeluaran_lain_bulanan || 0) + Number(values?.pengeluaran_tahunan || 0) / 12;
   return <div className="col-span-1 sm:col-span-2 bg-cyan-50 p-5 rounded-2xl border border-cyan-100"><h4 className="font-black text-cyan-800 mb-4">Data Desil Warga</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <div><label className="font-bold text-gray-700 block mb-1.5">Desil</label><select name="desil" value={values?.desil ?? ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white"><option value="">Pilih desil...</option>{Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}</select></div>
-    {['foto_rumah_depan', 'foto_ruang_tamu', 'foto_kamar_mandi'].map((field) => <div key={field}><label className="font-bold text-gray-700 block mb-1.5">{field === 'foto_rumah_depan' ? 'Foto rumah tampak depan' : field === 'foto_ruang_tamu' ? 'Foto ruang tamu' : 'Foto kamar mandi'}</label><input type="file" accept="image/*" capture="environment" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white text-sm" />{values?.[field] && <img src={values[field]} alt="Pratinjau" className="mt-2 h-20 w-28 object-cover rounded-lg border" />}</div>)}
+    {['foto_rumah_depan', 'foto_ruang_tamu', 'foto_kamar_mandi'].map((field) => { const label = field === 'foto_rumah_depan' ? 'Foto rumah tampak depan' : field === 'foto_ruang_tamu' ? 'Foto ruang tamu' : 'Foto kamar mandi'; return <div key={field}><label className="font-bold text-gray-700 block mb-1.5">{label}</label><input ref={(element) => { photoInputRefs.current[`${field}-camera`] = element; }} type="file" accept="image/*" capture="environment" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><input ref={(element) => { photoInputRefs.current[`${field}-file`] = element; }} type="file" accept="*/*" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><input ref={(element) => { photoInputRefs.current[`${field}-gallery`] = element; }} type="file" accept="image/*" onChange={(event) => onPhotoChange(field, event.target.files?.[0] || null)} className="hidden" /><div className="flex flex-wrap gap-2"><button type="button" onClick={() => photoInputRefs.current[`${field}-camera`]?.click()} className="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold">Ambil dengan kamera</button><button type="button" onClick={() => photoInputRefs.current[`${field}-file`]?.click()} className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">Pilih file</button><button type="button" onClick={() => photoInputRefs.current[`${field}-gallery`]?.click()} className="px-3 py-2 rounded-lg bg-teal-50 text-teal-700 text-xs font-bold">Pilih galeri</button></div>{values?.[field] && <img src={values[field]} alt={`Pratinjau ${label}`} className="mt-2 h-20 w-28 object-cover rounded-lg border" />}</div>; })}
     <div><label className="font-bold text-gray-700 block mb-1.5">Status kepemilikan rumah</label><select name="status_kepemilikan_rumah" value={values?.status_kepemilikan_rumah || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white"><option value="">Pilih...</option><option>Milik sendiri</option><option>Sewa</option><option>Menumpang</option><option>Lainnya</option></select></div>
     <div><label className="font-bold text-gray-700 block mb-1.5">ID PLN</label><input name="id_pln" value={values?.id_pln || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
     <div><label className="font-bold text-gray-700 block mb-1.5">ID PDAM</label><input name="id_pdam" value={values?.id_pdam || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-white" /></div>
@@ -272,19 +273,13 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       const uploadedPhotos = await uploadPhotos(newNik);
       const { nik, ...dataToUpdate } = { ...formData, ...uploadedPhotos };
       if (newNik !== oldNik) {
-        const references = [
-          ['profiles', 'nik'],
-          ['iuran_kas', 'nik_warga'],
-          ['permintaan_surat', 'nik_pemohon'],
-          ['usulan_warga', 'nik_pengusul'],
-          ['surat_keterangan', 'nik_warga']
-        ];
-        for (const [table, column] of references) {
-          const { error } = await supabase.from(table).update({ [column]: newNik }).eq(column, oldNik);
-          if (error) throw error;
-        }
+        const { error: nikError } = await supabase.rpc('update_warga_nik', {
+          p_old_nik: oldNik,
+          p_new_nik: newNik
+        });
+        if (nikError) throw nikError;
       }
-      const { error } = await supabase.from('master_warga').update(dataToUpdate).eq('nik', oldNik);
+      const { error } = await supabase.from('master_warga').update(dataToUpdate).eq('nik', newNik);
       if (error) throw error;
       setShowModal({ ...showModal, edit: false }); 
       setPhotoFiles({});
