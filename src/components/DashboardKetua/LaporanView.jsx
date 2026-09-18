@@ -127,11 +127,27 @@ export default function LaporanView({ setActiveView, dataWarga }) {
   const getRentangPeriode = (periode, tahun) => {
     const y = Number(tahun) || new Date().getFullYear();
     const akhirBulan = { 'JANUARI - MARET': 2, 'APRIL - JUNI': 5, 'JULI - SEPTEMBER': 8, 'OKTOBER - DESEMBER': 11 };
-    const akhir = akhirBulan[periode] ?? 2;
-    return { mulai: `${y}-${String(akhir - 2 + 1).padStart(2, '0')}-01`, selesai: new Date(y, akhir + 1, 0).toISOString().slice(0, 10) };
+    const akhir = akhirBulan[periode] ?? 2; // 0-indexed month of quarter end
+    const hariAkhir = new Date(y, akhir + 1, 0).getDate();
+    return {
+      mulai: `${y}-${String(akhir - 1).padStart(2, '0')}-01`,
+      selesai: `${y}-${String(akhir + 1).padStart(2, '0')}-${String(hariAkhir).padStart(2, '0')}`
+    };
   };
   const rentangPeriode = getRentangPeriode(manual.bulan, manual.tahun);
-  const dalamPeriode = (tanggal) => Boolean(tanggal && tanggal >= rentangPeriode.mulai && tanggal <= rentangPeriode.selesai);
+  const toDateOnly = (tanggal) => {
+    if (!tanggal) return null;
+    const s = String(tanggal);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  };
+  const dalamPeriode = (tanggal) => {
+    const d = toDateOnly(tanggal);
+    return Boolean(d && d >= rentangPeriode.mulai && d <= rentangPeriode.selesai);
+  };
+  const isAlasanKematian = (alasan) => {
+    const a = String(alasan || '').toUpperCase();
+    return /\[MENINGGAL\]|MENINGGAL|KEMATIAN|WAFAT/.test(a);
+  };
 
   // ==========================================
   // DATA WARGA & PERHITUNGAN OTOMATIS
@@ -140,9 +156,14 @@ export default function LaporanView({ setActiveView, dataWarga }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // Fallback: Jika Parent mengirim dataWarga, pakai. Jika tidak, fetch manual.
+  // Saat buka triwulan, refresh agar mutasi terbaru ikut terhitung.
   useEffect(() => { 
     if (!dataWarga || dataWarga.length === 0) fetchWargaLokal(); 
   }, [dataWarga]);
+
+  useEffect(() => {
+    if (subView === 'triwulan') fetchWargaLokal();
+  }, [subView]);
 
   const fetchWargaLokal = async () => {
     setIsLoading(true);
@@ -151,7 +172,9 @@ export default function LaporanView({ setActiveView, dataWarga }) {
     setIsLoading(false);
   };
 
-  const finalDataWarga = (dataWarga && dataWarga.length > 0) ? dataWarga : dataWargaLokal;
+  const finalDataWarga = dataWargaLokal.length > 0
+    ? dataWargaLokal
+    : ((dataWarga && dataWarga.length > 0) ? dataWarga : []);
 
   const dataDasarSorted = useMemo(() => {
     const bobot = { 'KEPALA KELUARGA': 1, 'ISTRI': 2, 'ANAK': 3 };
@@ -214,11 +237,20 @@ export default function LaporanView({ setActiveView, dataWarga }) {
       etnisStats[idx].j++;
     });
 
+    const mantanDalamPeriode = finalDataWarga.filter(w => {
+      const status = w.status_warga?.toLowerCase();
+      return (status === 'pindah' || status === 'mantan') && dalamPeriode(w.tanggal_keluar);
+    });
+    const mati = mantanDalamPeriode.filter(w => isAlasanKematian(w.alasan_hapus)).length;
+    const pindah = mantanDalamPeriode.filter(w => !isAlasanKematian(w.alasan_hapus)).length;
+    const datang = finalDataWarga.filter(w => dalamPeriode(w.tanggal_masuk)).length;
+
     return {
       totL: aktif.filter(isLaki).length, totP: aktif.filter(isPr).length, totJ: aktif.length,
       kk: new Set(aktif.map(w => w.no_kk).filter(Boolean)).size,
-      pindah: finalDataWarga.filter(w => (w.status_warga?.toLowerCase() === 'pindah' || w.status_warga?.toLowerCase() === 'mantan') && dalamPeriode(w.tanggal_keluar)).length,
-      datang: finalDataWarga.filter(w => dalamPeriode(w.tanggal_masuk)).length,
+      pindah,
+      datang,
+      mati,
       umur: { u0_5: cUmur(0,5), u6_10: cUmur(6,10), u11_17: cUmur(11,17), u18_60: cUmur(18,60), u60p: cUmur(61,999) },
       etnis: etnisStats,
       pendidikan: { 
@@ -238,7 +270,7 @@ export default function LaporanView({ setActiveView, dataWarga }) {
       tk: { u0_6: tk_0_6, u7_18: tk_7_18, u7_18_sekolah: tk_7_18_sekolah, u19_56: tk_19_56, u19_56_kerja: tk_19_56_kerja, u19_56_belum: tk_19_56_belum, u57_plus: tk_57_plus },
       ak: { tidak_sd: ak_tidak, sd: ak_sd, smp: ak_smp, sma: ak_sma, pt: ak_pt }
     };
-  }, [finalDataWarga]);
+  }, [finalDataWarga, rentangPeriode.mulai, rentangPeriode.selesai]);
 
   // ==========================================
   // EXPORT KE EXCEL (CSV GENERATOR)
@@ -280,7 +312,7 @@ export default function LaporanView({ setActiveView, dataWarga }) {
     csv += row(['','c','JUMLAH PENDUDUK PEREMPUAN',':', stats.totP, 'ORANG']);
     csv += row(['','d','JUMLAH KEPALA KELUARGA',':', stats.kk, 'KK']);
     csv += row(['','e','JUMLAH KELAHIRAN BULAN INI',':', manual.mutasiLahir, 'ORANG']);
-    csv += row(['','f','JUMLAH KEMATIAN BULAN INI',':', manual.mutasiMati, 'ORANG']);
+    csv += row(['','f','JUMLAH KEMATIAN BULAN INI',':', stats.mati, 'ORANG']);
     csv += row(['','g','JUMLAH PENDUDUK DATANG BULAN INI',':', stats.datang, 'ORANG']);
     csv += row(['','h','JUMLAH PENDUDUK PINDAH BULAN INI',':', stats.pindah, 'ORANG']);
     
@@ -572,7 +604,14 @@ export default function LaporanView({ setActiveView, dataWarga }) {
                   <option value="JULI - SEPTEMBER">JULI - SEPTEMBER</option>
                   <option value="OKTOBER - DESEMBER">OKTOBER - DESEMBER</option>
                 </select>
-                <div className="border p-2 rounded text-xs font-bold w-full sm:w-24 bg-gray-200 text-gray-500 cursor-not-allowed flex items-center justify-center">{manual.tahun}</div>
+                <input
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={manual.tahun}
+                  onChange={e=>updateManual('tahun', e.target.value)}
+                  className="border p-2 rounded text-xs font-bold w-full sm:w-24 bg-gray-50 outline-none focus:ring-emerald-500 text-center"
+                />
              </div>
              <div className="flex flex-col sm:flex-row gap-2 items-center w-full md:w-auto">
                 <button onClick={exportTriwulanExcel} className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-green-700 w-full sm:w-auto text-center">📊 Export ke Excel</button>
@@ -628,7 +667,7 @@ export default function LaporanView({ setActiveView, dataWarga }) {
                       <tr><td className="pb-1">c</td><td>JUMLAH PENDUDUK PEREMPUAN</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.totP}</td><td>ORANG</td></tr>
                       <tr><td className="pb-1">d</td><td>JUMLAH KEPALA KELUARGA</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.kk}</td><td>KK</td></tr>
                       <tr><td className="pb-1">e</td><td>JUMLAH KELAHIRAN BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiLahir} onChange={v=>updateManual('mutasiLahir',v)} /></td><td>ORANG</td></tr>
-                      <tr><td className="pb-1">f</td><td>JUMLAH KEMATIAN BULAN INI</td><td>:</td><td><EditNum val={manual.mutasiMati} onChange={v=>updateManual('mutasiMati',v)} /></td><td>ORANG</td></tr>
+                      <tr><td className="pb-1">f</td><td>JUMLAH KEMATIAN BULAN INI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.mati}</td><td>ORANG</td></tr>
                       <tr><td className="pb-1">g</td><td>JUMLAH PENDUDUK DATANG BULAN INI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.datang}</td><td>ORANG</td></tr>
                       <tr><td className="pb-1">h</td><td>JUMLAH PENDUDUK PINDAH BULAN INI</td><td>:</td><td className="text-center font-bold bg-gray-100">{stats.pindah}</td><td>ORANG</td></tr>
                     </tbody></table>

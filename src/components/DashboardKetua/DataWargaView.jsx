@@ -116,6 +116,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const [showModal, setShowModal] = useState({ add: false, edit: false, delete: false, view: false });
   const [formData, setFormData] = useState({});
   const [deleteReason, setDeleteReason] = useState('');
+  const [deleteJenis, setDeleteJenis] = useState('pindah');
   const [deleteDate, setDeleteDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedWarga, setSelectedWarga] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -411,18 +412,29 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
 
   const saveDelete = async (e) => {
     e.preventDefault(); 
+    if (!deleteJenis) {
+      showAlert("Perhatian", "Jenis mutasi wajib dipilih!", "warning");
+      return; 
+    }
     if (!deleteReason) {
       showAlert("Perhatian", "Alasan mutasi atau pindah wajib diisi!", "warning");
       return; 
     }
     
     setIsProcessing(true);
-    const { error } = await supabase.from('master_warga').update({ status_warga: 'mantan', alasan_hapus: deleteReason, tanggal_keluar: deleteDate, is_registered: false }).eq('nik', selectedWarga?.nik);
+    const prefix = deleteJenis === 'meninggal' ? '[MENINGGAL] ' : deleteJenis === 'pindah' ? '[PINDAH] ' : '';
+    const { error } = await supabase.from('master_warga').update({
+      status_warga: 'mantan',
+      alasan_hapus: `${prefix}${deleteReason}`.trim(),
+      tanggal_keluar: deleteDate,
+      is_registered: false
+    }).eq('nik', selectedWarga?.nik);
     setIsProcessing(false);
     
     if (!error) { 
       setShowModal({ ...showModal, delete: false }); 
-      setDeleteReason(''); 
+      setDeleteReason('');
+      setDeleteJenis('pindah');
       fetchWarga(); 
       showAlert("Mutasi Berhasil", "Warga telah dipindahkan ke daftar Mantan Warga.", "success");
     } else {
@@ -863,8 +875,14 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                 <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <p>Anda akan mengubah status <strong className="font-black">{selectedWarga?.nama}</strong> menjadi <strong>Mantan Warga</strong>. Data ini tidak akan terhapus permanen dari database.</p>
               </div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Alasan Mutasi/Pindah <span className="text-red-500">*</span></label>
-              <textarea required rows="3" placeholder="Contoh: Pindah domisili ke luar kota..." value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="w-full border border-gray-300 p-3 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"></textarea>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Jenis Mutasi <span className="text-red-500">*</span></label>
+              <select required value={deleteJenis} onChange={(e) => setDeleteJenis(e.target.value)} className="w-full border border-gray-300 p-3 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all mb-4">
+                <option value="pindah">Pindah / keluar RT</option>
+                <option value="meninggal">Meninggal dunia</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Alasan Mutasi <span className="text-red-500">*</span></label>
+              <textarea required rows="3" placeholder={deleteJenis === 'meninggal' ? 'Contoh: Meninggal karena sakit...' : 'Contoh: Pindah domisili ke luar kota...'} value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} className="w-full border border-gray-300 p-3 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"></textarea>
               <label className="block text-sm font-bold text-gray-700 mt-4 mb-2">Tanggal keluar <span className="text-red-500">*</span></label>
               <input required type="date" value={deleteDate} onChange={(e) => setDeleteDate(e.target.value)} className="w-full border border-gray-300 p-3 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all" />
             </div> 

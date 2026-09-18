@@ -56,6 +56,35 @@ create policy "Admin dapat membaca foto warga"
   on storage.objects for select to public
   using (bucket_id = 'warga');
 
+-- Satu kali: FK ke master_warga.nik memakai ON UPDATE CASCADE
+-- supaya ganti NIK di induk otomatis ikut ke tabel anak (iuran_kas, dll).
+do $$
+declare
+  r record;
+  col_name text;
+begin
+  for r in
+    select c.oid, c.conname, c.conrelid, c.conkey
+    from pg_constraint c
+    where c.contype = 'f'
+      and c.confrelid = 'public.master_warga'::regclass
+  loop
+    select a.attname into col_name
+    from pg_attribute a
+    where a.attrelid = r.conrelid
+      and a.attnum = r.conkey[1]
+      and not a.attisdropped;
+
+    execute format('alter table %s drop constraint %I', r.conrelid::regclass, r.conname);
+    execute format(
+      'alter table %s add constraint %I foreign key (%I) references public.master_warga(nik) on update cascade',
+      r.conrelid::regclass,
+      r.conname,
+      col_name
+    );
+  end loop;
+end $$;
+
 drop function if exists public.update_warga_nik(text, text);
 drop function if exists public.update_warga_nik(bigint, bigint);
 
@@ -68,29 +97,35 @@ as $$
 declare
   v_old_nik text := trim(p_old_nik);
   v_new_nik text := trim(p_new_nik);
+  v_new bigint;
 begin
   if v_old_nik is null or v_old_nik = '' or v_new_nik is null or v_new_nik = '' then
     raise exception 'NIK lama dan NIK baru wajib diisi';
   end if;
 
+  if v_old_nik !~ '^\d{16}$' or v_new_nik !~ '^\d{16}$' then
+    raise exception 'NIK harus terdiri dari tepat 16 digit angka';
+  end if;
+
+  v_new := v_new_nik::bigint;
+
   if v_old_nik = v_new_nik then
     return;
   end if;
 
-  if exists (select 1 from public.master_warga where nik = v_new_nik) then
+  if exists (select 1 from public.master_warga where nik::text = v_new_nik) then
     raise exception 'NIK baru sudah digunakan warga lain';
   end if;
 
-  update public.profiles set nik = v_new_nik where nik = v_old_nik;
-  update public.iuran_kas set nik_warga = v_new_nik where nik_warga = v_old_nik;
-  update public.permintaan_surat set nik_pemohon = v_new_nik where nik_pemohon = v_old_nik;
-  update public.usulan_warga set nik_pengusul = v_new_nik where nik_pengusul = v_old_nik;
-  update public.surat_keterangan set nik_warga = v_new_nik where nik_warga = v_old_nik;
-  update public.master_warga set nik = v_new_nik where nik = v_old_nik;
+  -- Update induk; anak (iuran_kas, surat, usulan, ...) ikut karena ON UPDATE CASCADE.
+  update public.master_warga set nik = v_new where nik::text = v_old_nik;
 
   if not found then
     raise exception 'Warga dengan NIK lama tidak ditemukan';
   end if;
+
+  -- profiles sering tanpa FK; update manual.
+  update public.profiles set nik = v_new where nik::text = v_old_nik;
 end;
 $$;
 
