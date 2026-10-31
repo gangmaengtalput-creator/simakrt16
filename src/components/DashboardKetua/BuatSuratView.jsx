@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
 export default function BuatSuratView({
@@ -15,13 +15,8 @@ export default function BuatSuratView({
   fetchPermintaanMasuk
 }) {
   const supabase = getSupabaseClient();
-  const previewFrameRef = useRef(null);
-  const A4_WIDTH_PX = 793.7;
-  const A4_HEIGHT_PX = 1122.5;
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [previewScale, setPreviewScale] = useState(1);
-  const [isMobilePreview, setIsMobilePreview] = useState(false);
   
   // State Edit Surat Khusus (Karena butuh input form ganda)
   const [selectedSurat, setSelectedSurat] = useState(null);
@@ -173,18 +168,18 @@ export default function BuatSuratView({
               </head>
               <body style="font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.2; color: black; margin: 0; padding: 0;">
                 
-                <table width="100%" style="width: 100%; border-bottom: 3px solid black; margin-bottom: 15px; border-collapse: collapse;">
+                <table width="100%" style="width: 100%; border-bottom: 3px solid black; margin-bottom: 15px; border-collapse: collapse; table-layout: fixed;">
                   <tr>
-                    <td width="15%" align="left" style="width: 15%; text-align: left; vertical-align: middle; padding-bottom: 5px;">
-                      <img src="${logoUrl}" style="width: 80px; height: auto;" alt="Logo" onerror="this.style.display='none'">
+                    <td width="12%" align="left" style="width: 12%; text-align: left; vertical-align: middle; padding-bottom: 5px;">
+                      <img src="${logoUrl}" style="width: 72px; height: auto;" alt="Logo" onerror="this.style.display='none'">
                     </td>
-                    <td width="70%" align="center" style="width: 70%; text-align: center; vertical-align: middle; padding-bottom: 5px; white-space: nowrap;">
-                      <h2 style="margin: 0; font-size: 13.5pt; font-weight: bold; text-transform: uppercase; text-align: center;">PEMERINTAH KOTA PALEMBANG</h2>
-                      <h2 style="margin: 0; font-size: 13.5pt; font-weight: bold; text-transform: uppercase; text-align: center;">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
-                      <h1 style="margin: 2px 0; font-size: 15pt; font-weight: bold; text-transform: uppercase; text-align: center;">KETUA RT.16 RW.04</h1>
-                      <p style="margin: 0; font-size: 10.5pt; text-align: center;">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                    <td width="76%" align="center" style="width: 76%; text-align: center; vertical-align: middle; padding-bottom: 5px; white-space: nowrap;">
+                      <h2 style="margin: 0; font-size: 13pt; font-weight: bold; text-transform: uppercase; text-align: center; white-space: nowrap;">PEMERINTAH KOTA PALEMBANG</h2>
+                      <h2 style="margin: 0; font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: center; white-space: nowrap;">KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                      <h1 style="margin: 2px 0; font-size: 15pt; font-weight: bold; text-transform: uppercase; text-align: center; white-space: nowrap;">KETUA RT.16 RW.04</h1>
+                      <p style="margin: 0; font-size: 10.5pt; text-align: center; white-space: nowrap;">Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
                     </td>
-                    <td width="15%" style="width: 15%; padding-bottom: 5px;"></td>
+                    <td width="12%" style="width: 12%; padding-bottom: 5px;"></td>
                   </tr>
                 </table>
 
@@ -391,32 +386,6 @@ export default function BuatSuratView({
     return `${d}/${m}/${y}`;
   };
 
-  useEffect(() => {
-    if (!cetakSurat) return;
-
-    const calculatePreviewScale = () => {
-      const frame = previewFrameRef.current;
-      if (!frame) return;
-      const mobile = window.innerWidth < 640;
-      setIsMobilePreview(mobile);
-      if (!mobile) {
-        setPreviewScale(1);
-        return;
-      }
-
-      const availableWidth = frame.clientWidth - 8;
-      const availableHeight = window.innerHeight - 260;
-      const widthScale = availableWidth / A4_WIDTH_PX;
-      const heightScale = availableHeight / A4_HEIGHT_PX;
-      const nextScale = Math.min(widthScale, heightScale, 1);
-      setPreviewScale(nextScale > 0 ? nextScale : 1);
-    };
-
-    calculatePreviewScale();
-    window.addEventListener('resize', calculatePreviewScale);
-    return () => window.removeEventListener('resize', calculatePreviewScale);
-  }, [cetakSurat]);
-
   return (
     <div className="max-w-5xl mx-auto print:font-serif">
       <div className="mb-4 print:hidden flex gap-2 sticky top-4 z-50">
@@ -593,28 +562,21 @@ export default function BuatSuratView({
             </div>
           </div>
 
-          <div ref={previewFrameRef} className="w-full overflow-hidden sm:overflow-x-auto bg-gray-100 p-2 sm:p-8 rounded-2xl print:bg-transparent print:p-0 flex justify-center items-start">
-            <div
-              className="relative w-full sm:w-auto flex justify-center"
-              style={isMobilePreview ? { height: `${A4_HEIGHT_PX * previewScale}px` } : undefined}
-            >
-            <div 
-              className="bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-black relative w-[210mm] min-w-[210mm] print:w-[210mm] min-h-[297mm] print:min-h-[297mm] box-border p-[1.5cm_2cm] print:p-[1.5cm_2cm] text-[12pt] print:text-[12pt] leading-[1.2]"
-              style={isMobilePreview ? { position: 'absolute', top: 0, left: '50%', transform: `translateX(-50%) scale(${previewScale})`, transformOrigin: 'top center' } : undefined}
-            >
-              <table width="100%" style={{ width: '100%', borderBottom: '3px solid black', marginBottom: '15px', borderCollapse: 'collapse' }}>
+          <div className="w-full overflow-x-auto bg-gray-100 p-2 sm:p-8 rounded-2xl print:bg-transparent print:p-0 print:overflow-visible flex justify-center items-start">
+            <div className="surat-a4-sheet bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] print:shadow-none font-serif text-black relative w-[210mm] min-w-[210mm] max-w-[210mm] print:w-[210mm] print:min-w-[210mm] print:max-w-[210mm] min-h-[297mm] print:min-h-[297mm] box-border p-[1.5cm_2cm] print:p-[1.5cm_2cm] text-[12pt] print:text-[12pt] leading-[1.2] transform-none scale-100">
+              <table width="100%" style={{ width: '100%', borderBottom: '3px solid black', marginBottom: '15px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                 <tbody>
                   <tr>
-                    <td width="15%" align="left" style={{ width: '15%', textAlign: 'left', verticalAlign: 'middle', paddingBottom: '5px' }}>
-                      <img src="/logo-palembang.png" style={{ width: '80px', height: 'auto' }} alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
+                    <td width="12%" align="left" style={{ width: '12%', textAlign: 'left', verticalAlign: 'middle', paddingBottom: '5px' }}>
+                      <img src="/logo-palembang.png" style={{ width: '72px', height: 'auto' }} alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
                     </td>
-                    <td width="70%" align="center" style={{ width: '70%', textAlign: 'center', verticalAlign: 'middle', paddingBottom: '5px' }}>
-                      <h2 style={{ margin: 0, fontSize: '13.5pt', fontWeight: 'bold', textTransform: 'uppercase' }}>PEMERINTAH KOTA PALEMBANG</h2>
-                      <h2 style={{ margin: 0, fontSize: '13.5pt', fontWeight: 'bold', textTransform: 'uppercase' }}>KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
-                      <h1 style={{ margin: '2px 0', fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase' }}>KETUA RT.16 RW.04</h1>
-                      <p style={{ margin: 0, fontSize: '10.5pt' }}>Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
+                    <td width="76%" align="center" style={{ width: '76%', textAlign: 'center', verticalAlign: 'middle', paddingBottom: '5px', whiteSpace: 'nowrap', overflow: 'visible' }}>
+                      <h2 style={{ margin: 0, fontSize: '13pt', fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: '0.2px' }}>PEMERINTAH KOTA PALEMBANG</h2>
+                      <h2 style={{ margin: 0, fontSize: '12pt', fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap', letterSpacing: '0.1px' }}>KELURAHAN TALANGPUTRI KECAMATAN PLAJU</h2>
+                      <h1 style={{ margin: '2px 0', fontSize: '15pt', fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>KETUA RT.16 RW.04</h1>
+                      <p style={{ margin: 0, fontSize: '10.5pt', whiteSpace: 'nowrap' }}>Jl. Kapten Robani Kadir RT.16 RW.04 Kode Pos : 30267</p>
                     </td>
-                    <td width="15%" style={{ width: '15%', paddingBottom: '5px' }}></td>
+                    <td width="12%" style={{ width: '12%', paddingBottom: '5px' }}></td>
                   </tr>
                 </tbody>
               </table>
@@ -723,7 +685,6 @@ export default function BuatSuratView({
                 <p style={{ margin: 0 }}>{cetakSurat?.pbb || 'Lunas/Belum Lunas/Tidak Terbit'}</p>
               </div>
 
-            </div>
             </div>
           </div>
         </div>
@@ -837,21 +798,44 @@ export default function BuatSuratView({
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { size: A4 portrait !important; margin: 0 !important; }
-          body, html { 
-            background: white !important; 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            -webkit-print-color-adjust: exact !important; 
-            color-adjust: exact !important; 
+          html, body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
-          .print-container { 
-            display: flex !important; 
-            justify-content: center !important; 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            border: none !important; 
-            box-shadow: none !important; 
+          body * { visibility: hidden !important; }
+          .print-container, .print-container * { visibility: visible !important; }
+          .print-container {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            display: block !important;
+            width: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            overflow: visible !important;
+            transform: none !important;
+          }
+          .surat-a4-sheet {
+            position: relative !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 210mm !important;
+            min-width: 210mm !important;
+            max-width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            transform: none !important;
+            scale: 1 !important;
+            box-shadow: none !important;
           }
           .break-inside-avoid { break-inside: avoid !important; }
           table { page-break-inside: avoid !important; }

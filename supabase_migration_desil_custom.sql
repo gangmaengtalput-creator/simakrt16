@@ -117,16 +117,75 @@ begin
     raise exception 'NIK baru sudah digunakan warga lain';
   end if;
 
-  -- Update induk; anak (iuran_kas, surat, usulan, ...) ikut karena ON UPDATE CASCADE.
-  update public.master_warga set nik = v_new where nik::text = v_old_nik;
-
-  if not found then
+  if not exists (select 1 from public.master_warga where nik::text = v_old_nik) then
     raise exception 'Warga dengan NIK lama tidak ditemukan';
   end if;
 
-  -- profiles sering tanpa FK; update manual.
+  -- Lepas FK sementara agar semua lini NIK bisa diganti tanpa chicken-egg.
+  alter table public.iuran_kas drop constraint if exists iuran_kas_nik_warga_fkey;
+  alter table public.permintaan_surat drop constraint if exists permintaan_surat_nik_pemohon_fkey;
+  alter table public.usulan_warga drop constraint if exists usulan_warga_nik_pengusul_fkey;
+  alter table public.surat_keterangan drop constraint if exists surat_keterangan_nik_warga_fkey;
+
+  -- 1) Login warga memakai profiles.nik → wajib ikut diganti.
   update public.profiles set nik = v_new where nik::text = v_old_nik;
+
+  -- 2) Tabel transaksi / surat / usulan (SET pakai bigint; kolom text otomatis cast).
+  update public.iuran_kas set nik_warga = v_new where nik_warga::text = v_old_nik;
+  update public.permintaan_surat set nik_pemohon = v_new where nik_pemohon::text = v_old_nik;
+  update public.usulan_warga set nik_pengusul = v_new where nik_pengusul::text = v_old_nik;
+  update public.surat_keterangan set nik_warga = v_new where nik_warga::text = v_old_nik;
+
+  -- 3) Induk terakhir
+  update public.master_warga set nik = v_new where nik::text = v_old_nik;
+
+  -- Pasang kembali FK + ON UPDATE CASCADE (abaikan jika tipe kolom tidak cocok / sudah ada).
+  begin
+    alter table public.iuran_kas
+      add constraint iuran_kas_nik_warga_fkey
+      foreign key (nik_warga) references public.master_warga(nik) on update cascade;
+  exception when others then null;
+  end;
+
+  begin
+    alter table public.permintaan_surat
+      add constraint permintaan_surat_nik_pemohon_fkey
+      foreign key (nik_pemohon) references public.master_warga(nik) on update cascade;
+  exception when others then null;
+  end;
+
+  begin
+    alter table public.usulan_warga
+      add constraint usulan_warga_nik_pengusul_fkey
+      foreign key (nik_pengusul) references public.master_warga(nik) on update cascade;
+  exception when others then null;
+  end;
+
+  begin
+    alter table public.surat_keterangan
+      add constraint surat_keterangan_nik_warga_fkey
+      foreign key (nik_warga) references public.master_warga(nik) on update cascade;
+  exception when others then null;
+  end;
 end;
 $$;
 
 grant execute on function public.update_warga_nik(text, text) to anon, authenticated;
+
+-- Login by NIK harus cocok dengan profiles.nik yang baru.
+drop function if exists public.get_login_info_by_nik(text);
+drop function if exists public.get_login_info_by_nik(bigint);
+
+create function public.get_login_info_by_nik(input_nik text)
+returns table(email text, status text, role text)
+language sql
+security definer
+set search_path = public
+as $$
+  select p.email::text, p.status::text, p.role::text
+  from public.profiles p
+  where p.nik::text = trim(input_nik)
+  limit 1;
+$$;
+
+grant execute on function public.get_login_info_by_nik(text) to anon, authenticated;

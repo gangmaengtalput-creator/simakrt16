@@ -6,7 +6,10 @@ export default function IuranKasView({
   dataWarga,
   listRiwayatIuran,
   fetchRiwayatIuran,
-  totalSaldoAllTime
+  totalSaldoAllTime,
+  showBackButton = true,
+  modeLabel = null,
+  recordedBy = null,
 }) {
   const supabase = getSupabaseClient();
   const namaBulanSekarang = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date());
@@ -159,6 +162,10 @@ export default function IuranKasView({
     window.print();
   };
 
+  const withRecorderNote = (keterangan) => (
+    recordedBy ? `${keterangan} (Dicatat oleh: ${recordedBy})` : keterangan
+  );
+
   // ==========================================
   // FUNGSI AKSI (SUBMIT, HAPUS, KECUALIKAN)
   // ==========================================
@@ -194,7 +201,7 @@ export default function IuranKasView({
         bulan_iuran: filterBulanIuran,
         tahun_iuran: filterTahunIuran,
         tipe_transaksi: 'pemasukan',
-        keterangan: `Pemasukan Lain: ${sumberPemasukan} (Penyetor: ${warga.nama})`,
+        keterangan: withRecorderNote(`Pemasukan Lain: ${sumberPemasukan} (Penyetor: ${warga.nama})`),
       }]);
 
       setIsProcessing(false);
@@ -234,7 +241,7 @@ export default function IuranKasView({
           bulan_iuran: DAFTAR_BULAN[startIndexBulan],
           tahun_iuran: currentTahun,
           tipe_transaksi: 'pemasukan',
-          keterangan: `Iuran Bulanan Warga (Pembayaran Dimuka ${jumlahBulan} Bulan)`,
+          keterangan: withRecorderNote(`Iuran Bulanan Warga (Pembayaran Dimuka ${jumlahBulan} Bulan)`),
         });
 
         startIndexBulan++;
@@ -261,7 +268,7 @@ export default function IuranKasView({
     } else {
       const isLunas = iuranData.status_pembayaran === 'Lunas';
       const finalNominal = isLunas ? 5000 : 0; 
-      const finalKeterangan = isLunas ? 'Iuran Bulanan Warga' : iuranData.status_pembayaran;
+      const finalKeterangan = withRecorderNote(isLunas ? 'Iuran Bulanan Warga' : iuranData.status_pembayaran);
 
       const { error } = await supabase.from('iuran_kas').insert([{
         nik_warga: warga.nik,
@@ -326,14 +333,25 @@ export default function IuranKasView({
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {modeLabel && (
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-5 rounded-2xl shadow-lg shadow-emerald-200/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
+          <div>
+            <h2 className="font-black text-lg text-white tracking-wide">{modeLabel}</h2>
+            <p className="text-xs text-emerald-100 mt-0.5">Form dan fitur sama persis dengan panel Iuran Kas Ketua RT.</p>
+          </div>
+          <span className="bg-white/20 text-white font-bold px-3 py-1.5 rounded-lg text-xs border border-white/30 w-fit">Mode Petugas Aktif</span>
+        </div>
+      )}
       
       {/* HEADER & SALDO (print:hidden agar tidak ikut ter-print) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div className="flex items-center gap-2">
-          <button onClick={() => setActiveView('menu')} className="text-sm text-green-700 font-bold hover:underline bg-green-50 hover:bg-green-100 transition-colors px-5 py-2.5 rounded-xl flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Kembali ke Menu
-          </button>
+          {showBackButton && (
+            <button onClick={() => setActiveView('menu')} className="text-sm text-green-700 font-bold hover:underline bg-green-50 hover:bg-green-100 transition-colors px-5 py-2.5 rounded-xl flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+              Kembali ke Menu
+            </button>
+          )}
           
           <button onClick={handlePrintPDF} className="text-sm text-blue-700 font-bold hover:underline bg-blue-50 hover:bg-blue-100 transition-colors px-5 py-2.5 rounded-xl flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>

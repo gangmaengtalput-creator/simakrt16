@@ -402,7 +402,13 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       setPhotoFiles({});
       setPhotoInfo({});
       fetchWarga(); 
-      showAlert("Berhasil", "Perubahan data warga berhasil disimpan.", "success");
+      showAlert(
+        "Berhasil",
+        newNik !== oldNik
+          ? "Perubahan data warga berhasil disimpan. NIK baru sudah dipakai di login, iuran, surat, dan data terkait."
+          : "Perubahan data warga berhasil disimpan.",
+        "success"
+      );
     } catch (error) {
       showAlert("Gagal Memperbarui", error.message, "error");
     } finally {
