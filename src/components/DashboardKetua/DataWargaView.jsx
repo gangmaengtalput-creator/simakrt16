@@ -405,7 +405,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       showAlert(
         "Berhasil",
         newNik !== oldNik
-          ? "Perubahan data warga berhasil disimpan. NIK baru sudah dipakai di login, iuran, surat, dan data terkait."
+          ? "Perubahan data warga berhasil disimpan. Sesi warga akan otomatis berakhir maksimal dalam 15 detik. Untuk login kembali, gunakan NIK baru."
           : "Perubahan data warga berhasil disimpan.",
         "success"
       );

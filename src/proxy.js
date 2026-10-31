@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
 export async function proxy(request) {
   // 1. Buat response dasar Next.js
   let supabaseResponse = NextResponse.next({ request })
@@ -38,16 +40,47 @@ export async function proxy(request) {
   } = await supabase.auth.getUser()
 
   // --- FUNGSI KRUSIAL: Membawa Cookie secara utuh saat Redirect ---
+  const copySupabaseCookies = (response) => {
+    supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie))
+  }
+
   const redirectWithCookies = (url) => {
     const response = NextResponse.redirect(url)
     // Salin SEMUA cookie (beserta options-nya) dari supabaseResponse ke response redirect
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      response.cookies.set(cookie)
-    })
+    copySupabaseCookies(response)
     return response
   }
 
   // --- LOGIKA PROTEKSI & ROUTING APLIKASI ---
+
+  if (user && !authError && pathname !== '/api/auth/login') {
+    const sessionStartedAt = Number(request.cookies.get('session_started_at')?.value)
+    const now = Date.now()
+    const sessionExpired = !Number.isSafeInteger(sessionStartedAt)
+      || sessionStartedAt <= 0
+      || sessionStartedAt > now
+      || now - sessionStartedAt >= SESSION_MAX_AGE_MS
+
+    if (sessionExpired) {
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+      if (signOutError) {
+        console.error('Gagal mengakhiri sesi 24 jam:', signOutError)
+        return NextResponse.json({ error: 'Gagal mengakhiri sesi yang telah berakhir.' }, { status: 500 })
+      }
+
+      const expiredUrl = request.nextUrl.clone()
+      expiredUrl.pathname = '/login'
+      expiredUrl.searchParams.set('expired', 'true')
+
+      const response = pathname.startsWith('/api/')
+        ? NextResponse.json({ error: 'Sesi login telah berakhir.' }, { status: 401 })
+        : redirectWithCookies(expiredUrl)
+      if (pathname.startsWith('/api/')) copySupabaseCookies(response)
+      response.cookies.delete('session_started_at')
+      response.cookies.delete('last_active')
+      return response
+    }
+  }
 
   // A. Jika mengakses /login tapi SUDAH login
   if (pathname === '/login' && user && !authError) {
@@ -67,35 +100,6 @@ export async function proxy(request) {
     if (!user || authError) {
       return redirectWithCookies(new URL('/login', request.url))
     }
-
-    // Fitur Auto Logout 12 Jam
-    const TWELVE_HOURS = 12 * 60 * 60
-    const now = Date.now()
-    const lastActiveCookie = request.cookies.get('last_active')?.value
-
-    if (lastActiveCookie) {
-      const timeElapsed = now - parseInt(lastActiveCookie, 10)
-      if (timeElapsed > TWELVE_HOURS * 1000) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        url.searchParams.set('expired', 'true')
-        
-        const response = redirectWithCookies(url)
-        response.cookies.delete('last_active') // Bersihkan cookie expired
-        return response
-      }
-    }
-
-    // Set/Perbarui cookie last_active
-    supabaseResponse.cookies.set({
-      name: 'last_active',
-      value: now.toString(),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: TWELVE_HOURS,
-    })
 
     // Proteksi Hak Akses Role (Ketua RT vs Warga)
     const { data: profile } = await supabase

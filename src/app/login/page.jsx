@@ -14,6 +14,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [expiredMessage, setExpiredMessage] = useState('');
   const [redirectPath, setRedirectPath] = useState('');
   
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -27,6 +28,10 @@ export default function Login() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('expired') === 'true') {
         setShowExpiredModal(true);
+        setExpiredMessage('Sesi login Anda telah berakhir setelah 24 jam. Silakan login kembali.');
+      } else if (params.get('nik-updated') === 'true') {
+        setShowExpiredModal(true);
+        setExpiredMessage('NIK akun Anda telah diperbarui. Silakan login kembali menggunakan NIK baru.');
       }
     }
   }, []);
@@ -165,6 +170,10 @@ export default function Login() {
 
       // Jika Login Sukses
       resetLockout();
+      if (data.userId) {
+        window.sessionStorage.setItem(`simakrt16:session-nik:${data.userId}`, nik.trim());
+        window.localStorage.setItem(`simakrt16:session-expiry:${data.userId}`, String(data.sessionExpiresAt));
+      }
       setIsLoading(false);
       setShowSuccessModal(true);
       setRedirectPath(data.redirectTo || '/dashboard/warga');
@@ -214,7 +223,7 @@ export default function Login() {
             </div>
             <h3 className="text-xl font-black text-gray-900 text-center">Sesi Berakhir</h3>
             <p className="mt-2 text-sm text-gray-600 text-center font-medium">
-              Sesi Anda berakhir karena tidak ada aktivitas selama 12 jam. Silakan login kembali.
+              {expiredMessage}
             </p>
             <button
               onClick={() => {

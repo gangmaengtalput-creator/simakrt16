@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '../../../../lib/supabase/server'
 
+const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60
+
 export async function POST(request) {
   try {
     const { nik, password } = await request.json()
@@ -60,8 +62,23 @@ export async function POST(request) {
     }
 
     const redirectTo = role === 'ketua_rt' ? '/dashboard/ketua' : '/dashboard/warga'
+    const sessionStartedAt = Date.now()
+    const response = NextResponse.json({
+      success: true,
+      redirectTo,
+      userId: authData.user.id,
+      sessionExpiresAt: sessionStartedAt + SESSION_MAX_AGE_SECONDS * 1000,
+    })
 
-    return NextResponse.json({ success: true, redirectTo })
+    response.cookies.set('session_started_at', String(sessionStartedAt), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_MAX_AGE_SECONDS,
+    })
+
+    return response
   } catch (err) {
     console.error('Login API error:', err)
     return NextResponse.json(
