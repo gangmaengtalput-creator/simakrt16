@@ -16,7 +16,16 @@ alter table public.master_warga
   add column if not exists pengeluaran_lain_bulanan numeric default 0,
   add column if not exists pengeluaran_tahunan numeric default 0,
   add column if not exists desil integer check (desil between 1 and 10),
-  add column if not exists custom_fields jsonb not null default '{}'::jsonb;
+  add column if not exists custom_fields jsonb not null default '{}'::jsonb,
+  add column if not exists foto_warga text,
+  add column if not exists dokumen_ktp text,
+  add column if not exists dokumen_kk text,
+  add column if not exists nama_ayah text,
+  add column if not exists nama_ibu text,
+  add column if not exists status_perkawinan text,
+  add column if not exists dokumen_buku_nikah text,
+  add column if not exists dokumen_akta_cerai text,
+  add column if not exists dokumen_akta_kematian_pasangan text;
 
 create table if not exists public.custom_field_definitions (
   id uuid primary key default gen_random_uuid(),
@@ -55,6 +64,33 @@ create policy "Admin dapat memperbarui foto warga"
 create policy "Admin dapat membaca foto warga"
   on storage.objects for select to public
   using (bucket_id = 'warga');
+
+insert into storage.buckets (id, name, public)
+values ('dokumen-warga', 'dokumen-warga', false)
+on conflict (id) do update set public = false;
+
+drop policy if exists "Ketua RT dapat mengunggah dokumen personal" on storage.objects;
+drop policy if exists "Ketua RT dapat membaca dokumen personal" on storage.objects;
+
+create policy "Ketua RT dapat mengunggah dokumen personal"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'dokumen-warga'
+    and exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'ketua_rt'
+    )
+  );
+
+create policy "Ketua RT dapat membaca dokumen personal"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'dokumen-warga'
+    and exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'ketua_rt'
+    )
+  );
 
 -- Satu kali: FK ke master_warga.nik memakai ON UPDATE CASCADE
 -- supaya ganti NIK di induk otomatis ikut ke tabel anak (iuran_kas, dll).

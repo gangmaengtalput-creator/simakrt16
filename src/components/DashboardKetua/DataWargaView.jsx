@@ -12,6 +12,18 @@ const DESIL_KK_FIELDS = [
   'pengeluaran_lain_bulanan', 'pengeluaran_tahunan',
 ];
 
+const PERSONAL_DOCUMENTS = [
+  { field: 'foto_warga', label: 'Foto', accept: 'image/*' },
+  { field: 'dokumen_ktp', label: 'KTP', accept: 'image/*,application/pdf' },
+  { field: 'dokumen_kk', label: 'Kartu Keluarga', accept: 'image/*,application/pdf' },
+];
+
+const MARITAL_DOCUMENTS = {
+  menikah: { field: 'dokumen_buku_nikah', label: 'Buku Nikah' },
+  cerai_hidup: { field: 'dokumen_akta_cerai', label: 'Akta Cerai' },
+  cerai_mati: { field: 'dokumen_akta_kematian_pasangan', label: 'Akta Kematian Pasangan' },
+};
+
 const scoreDesilRecord = (w) => DESIL_KK_FIELDS.reduce((sum, field) => {
   const value = w?.[field];
   if (value == null || value === '') return sum;
@@ -82,6 +94,84 @@ const compressImageTo50Kb = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
+const compressImageTo10Kb = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onerror = () => reject(new Error('Foto tidak dapat dibaca.'));
+  reader.onload = (event) => {
+    const image = new Image();
+    image.onerror = () => reject(new Error('Format foto tidak didukung.'));
+    image.onload = () => {
+      let maxDimension = 1600;
+      let quality = 0.85;
+      const compress = () => {
+        const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) return reject(new Error('Foto gagal dikompres.'));
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error('Foto gagal dikompres.'));
+          if (blob.size <= 10 * 1024) {
+            resolve(new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' }));
+            return;
+          }
+          if (quality > 0.1) quality = Math.max(0.1, quality - 0.1);
+          else if (maxDimension > 64) { maxDimension = Math.max(64, Math.floor(maxDimension * 0.8)); quality = 0.85; }
+          else return reject(new Error('Foto tidak dapat dikompres hingga maksimal 10 KB.'));
+          compress();
+        }, 'image/jpeg', quality);
+      };
+      compress();
+    };
+    image.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+const MaritalStatusField = ({ value, onChange }) => (
+  <div>
+    <label className="font-bold text-gray-700 block mb-1.5">Status Perkawinan</label>
+    <select name="status_perkawinan" value={value || ''} onChange={onChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50">
+      <option value="">Pilih status...</option>
+      <option value="belum_menikah">Belum Menikah</option>
+      <option value="menikah">Menikah</option>
+      <option value="cerai_hidup">Cerai Hidup</option>
+      <option value="cerai_mati">Cerai Mati</option>
+    </select>
+  </div>
+);
+
+const PersonalDocumentsFields = ({ values, files, onFileChange, onOpenDocument, includeIdentityDocuments = true }) => {
+  const maritalDocument = MARITAL_DOCUMENTS[values?.status_perkawinan];
+  const documents = [
+    ...(includeIdentityDocuments ? PERSONAL_DOCUMENTS : []),
+    ...(maritalDocument ? [{ ...maritalDocument, accept: 'image/*,application/pdf' }] : []),
+  ];
+  if (!documents.length) return null;
+  return (
+  <div className="col-span-1 sm:col-span-2 bg-sky-50 p-5 rounded-2xl border border-sky-100">
+    <h4 className="font-black text-sky-800 mb-1">{includeIdentityDocuments ? 'Data Personal' : 'Dokumen Perkawinan'}</h4>
+    <p className="text-xs text-sky-700/80 mb-4">{includeIdentityDocuments ? 'Foto dikompres otomatis hingga maksimal 10 KB. KTP dan KK dapat berupa gambar atau PDF.' : 'Unggah dokumen yang sesuai dengan status perkawinan.'}</p>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {documents.map(({ field, label, accept }) => (
+        <div key={field} className="bg-white p-4 rounded-xl border border-sky-100 min-w-0">
+          <label htmlFor={`personal-${field}`} className="font-bold text-gray-700 block mb-2">{label}</label>
+          <input id={`personal-${field}`} type="file" accept={accept} onChange={(event) => onFileChange(field, event.target.files?.[0] || null)} className="block w-full text-xs text-gray-600 file:mr-2 file:rounded-lg file:border-0 file:bg-sky-100 file:px-3 file:py-2 file:font-bold file:text-sky-800" />
+          {files[field] && <p className="mt-2 text-xs text-gray-500 break-all">Dipilih: {files[field].name}</p>}
+          {!files[field] && values?.[field] && <p className="mt-2 text-xs text-emerald-700">Dokumen tersimpan</p>}
+          {values?.[field] && <div className="flex gap-2 mt-3">
+            <button type="button" onClick={() => onOpenDocument(values[field])} className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-xs font-bold">Lihat</button>
+            <button type="button" onClick={() => onOpenDocument(values[field], true)} className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">Unduh</button>
+          </div>}
+        </div>
+      ))}
+    </div>
+  </div>
+  );
+};
+
 const formatFileSize = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 
 const DesilFields = ({ values, onChange, onPhotoChange, onPhotoUpload, photoFiles, photoInfo, uploadingPhoto }) => {
@@ -123,6 +213,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
   const [photoFiles, setPhotoFiles] = useState({});
   const [photoInfo, setPhotoInfo] = useState({});
   const [uploadingPhoto, setUploadingPhoto] = useState(null);
+  const [personalFiles, setPersonalFiles] = useState({});
 
   // State Khusus Dropdown Etnis
   const [showEtnisLainnya, setShowEtnisLainnya] = useState(false);
@@ -300,6 +391,68 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     }
   };
 
+  const handlePersonalFileChange = async (field, file) => {
+    if (!file) return;
+    if (field === 'foto_warga') {
+      if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+        showAlert('Format Tidak Didukung', 'Foto harus berupa gambar raster.', 'warning');
+        return;
+      }
+      try {
+        const compressedFile = await compressImageTo10Kb(file);
+        setPersonalFiles((current) => ({ ...current, [field]: compressedFile }));
+      } catch (error) {
+        showAlert('Gagal Kompres Foto', error.message, 'error');
+      }
+      return;
+    }
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      showAlert('Format Tidak Didukung', 'KTP dan KK harus berupa gambar atau PDF.', 'warning');
+      return;
+    }
+    setPersonalFiles((current) => ({ ...current, [field]: file }));
+  };
+
+  const openPersonalDocument = async (filePath, download = false) => {
+    if (!filePath) return;
+    if (/^https?:\/\//i.test(filePath)) {
+      window.open(filePath, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const documentWindow = window.open('about:blank', '_blank');
+    if (!documentWindow) {
+      showAlert('Popup Diblokir', 'Izinkan popup untuk membuka dokumen ini.', 'warning');
+      return;
+    }
+    const { data, error } = await supabase.storage.from('dokumen-warga').createSignedUrl(filePath, 60, download ? { download: true } : undefined);
+    if (error || !data?.signedUrl) {
+      documentWindow.close();
+      showAlert('Dokumen Tidak Dapat Dibuka', error?.message || 'Tautan dokumen gagal dibuat.', 'error');
+      return;
+    }
+    documentWindow.opener = null;
+    documentWindow.location.href = data.signedUrl;
+  };
+
+  const uploadPersonalDocuments = async (nik) => {
+    const uploadedValues = {};
+    const activeMaritalDocument = MARITAL_DOCUMENTS[formData.status_perkawinan];
+    const documentsToUpload = [...PERSONAL_DOCUMENTS, ...(activeMaritalDocument ? [activeMaritalDocument] : [])];
+    for (const { field } of documentsToUpload) {
+      const file = personalFiles[field];
+      if (!file) continue;
+      const uploadFile = field === 'foto_warga' ? await compressImageTo10Kb(file) : file;
+      const extension = field === 'foto_warga' ? 'jpg' : (file.name.match(/\.([a-z0-9]{1,8})$/i)?.[1]?.toLowerCase() || 'bin');
+      const filePath = `${nik}/personal/${field}_${Date.now()}.${extension}`;
+      const { error } = await supabase.storage.from('dokumen-warga').upload(filePath, uploadFile, {
+        contentType: uploadFile.type || 'application/octet-stream',
+      });
+      if (error) throw error;
+      uploadedValues[field] = filePath;
+    }
+    return uploadedValues;
+  };
+
   const uploadPhoto = async (field) => {
     const file = photoFiles[field];
     const nik = String(formData.nik || '').trim();
@@ -357,12 +510,14 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       const nik = String(formData.nik || '').trim();
       if (!/^\d{16}$/.test(nik)) throw new Error('NIK harus terdiri dari tepat 16 digit angka.');
       const uploadedPhotos = await uploadPhotos(nik);
-      const { error } = await supabase.from('master_warga').insert([{ ...formData, ...uploadedPhotos, status_warga: 'aktif' }]);
+      const uploadedPersonalDocuments = await uploadPersonalDocuments(nik);
+      const { error } = await supabase.from('master_warga').insert([{ ...formData, ...uploadedPhotos, ...uploadedPersonalDocuments, status_warga: 'aktif' }]);
       if (error) throw error;
       await syncDesilToKk(formData.no_kk, { ...formData, ...uploadedPhotos });
       setShowModal({ ...showModal, add: false }); 
       setPhotoFiles({});
       setPhotoInfo({});
+      setPersonalFiles({});
       fetchWarga(); 
       showAlert("Berhasil", "Data warga baru telah berhasil ditambahkan.", "success");
     } catch (error) {
@@ -387,7 +542,8 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       }
 
       const uploadedPhotos = await uploadPhotos(newNik);
-      const { nik, ...dataToUpdate } = { ...formData, ...uploadedPhotos };
+      const uploadedPersonalDocuments = await uploadPersonalDocuments(newNik);
+      const { nik, ...dataToUpdate } = { ...formData, ...uploadedPhotos, ...uploadedPersonalDocuments };
       if (newNik !== oldNik) {
         const { error: nikError } = await supabase.rpc('update_warga_nik', {
           p_old_nik: oldNik,
@@ -401,6 +557,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       setShowModal({ ...showModal, edit: false }); 
       setPhotoFiles({});
       setPhotoInfo({});
+      setPersonalFiles({});
       fetchWarga(); 
       showAlert(
         "Berhasil",
@@ -463,6 +620,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     setSelectedWarga(warga); 
     setPhotoFiles({});
     setPhotoInfo({});
+    setPersonalFiles({});
     const existingHp = warga.no_hp || profilesMap[warga.nik] || '';
     setFormData({ ...warga, no_hp: existingHp, ...getKkDesilData(warga.no_kk) });
     setShowEtnisLainnya(warga.etnis && !arrEtnis.slice(0, -1).includes(warga.etnis));
@@ -692,6 +850,9 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Jenis Kelamin</p><p className="font-bold text-gray-800">{selectedWarga.jenis_kelamin || '-'}</p></div>
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Agama</p><p className="font-bold text-gray-800">{selectedWarga.agama || '-'}</p></div>
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Etnis / Suku</p><p className="font-bold text-gray-800">{selectedWarga.etnis || '-'}</p></div>
+                    <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Nama Ayah</p><p className="font-bold text-gray-800">{selectedWarga.nama_ayah || '-'}</p></div>
+                    <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Nama Ibu</p><p className="font-bold text-gray-800">{selectedWarga.nama_ibu || '-'}</p></div>
+                    <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Status Perkawinan</p><p className="font-bold text-gray-800">{{ belum_menikah: 'Belum Menikah', menikah: 'Menikah', cerai_hidup: 'Cerai Hidup', cerai_mati: 'Cerai Mati' }[selectedWarga.status_perkawinan] || '-'}</p></div>
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Pendidikan</p><p className="font-bold text-gray-800">{selectedWarga.pendidikan || '-'}</p></div>
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">No. Handphone</p><p className="font-bold text-gray-800 font-mono bg-gray-100 px-2 py-0.5 rounded">{selectedWarga.no_hp || profilesMap[selectedWarga.nik] || '-'}</p></div>
                     <div className="col-span-2"><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Pekerjaan</p><p className="font-bold text-gray-800">{selectedWarga.pekerjaan || '-'}</p></div>
@@ -781,9 +942,13 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   
                   <div><label className="font-bold text-gray-700 block mb-1.5">Status KK <span className="text-red-500">*</span></label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
                   <div><label className="font-bold text-gray-700 block mb-1.5">Pendidikan <span className="text-red-500">*</span></label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
+                  <div><label className="font-bold text-gray-700 block mb-1.5">Nama Ayah</label><input name="nama_ayah" value={formData?.nama_ayah || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
+                  <div><label className="font-bold text-gray-700 block mb-1.5">Nama Ibu</label><input name="nama_ibu" value={formData?.nama_ibu || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
+                  <MaritalStatusField value={formData?.status_perkawinan} onChange={handleInputChange} />
                   
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" /></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Alamat Lengkap <span className="text-red-500">*</span></label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" rows="3"></textarea></div>
+                  <PersonalDocumentsFields values={formData} files={personalFiles} onFileChange={handlePersonalFileChange} onOpenDocument={openPersonalDocument} includeIdentityDocuments={false} />
                   <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} onPhotoUpload={uploadPhoto} photoFiles={photoFiles} photoInfo={photoInfo} uploadingPhoto={uploadingPhoto} />
                 </div>
               </div>
@@ -850,9 +1015,13 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                   
                   <div><label className="font-bold text-gray-700 block mb-1.5">Status KK <span className="text-red-500">*</span></label><input required name="status_kk" placeholder="Contoh: KEPALA KELUARGA" value={formData?.status_kk || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
                   <div><label className="font-bold text-gray-700 block mb-1.5">Pendidikan <span className="text-red-500">*</span></label><input required name="pendidikan" value={formData?.pendidikan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
+                  <div><label className="font-bold text-gray-700 block mb-1.5">Nama Ayah</label><input name="nama_ayah" value={formData?.nama_ayah || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
+                  <div><label className="font-bold text-gray-700 block mb-1.5">Nama Ibu</label><input name="nama_ibu" value={formData?.nama_ibu || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
+                  <MaritalStatusField value={formData?.status_perkawinan} onChange={handleInputChange} />
                   
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Pekerjaan</label><input name="pekerjaan" value={formData?.pekerjaan || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" /></div>
                   <div className="col-span-1 sm:col-span-2"><label className="font-bold text-gray-700 block mb-1.5">Alamat Lengkap <span className="text-red-500">*</span></label><textarea required name="alamat" value={formData?.alamat || ''} onChange={handleInputChange} className="w-full border border-gray-300 p-2.5 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all" rows="3"></textarea></div>
+                  <PersonalDocumentsFields values={formData} files={personalFiles} onFileChange={handlePersonalFileChange} onOpenDocument={openPersonalDocument} />
                   <DesilFields values={formData} onChange={handleInputChange} onPhotoChange={handlePhotoChange} onPhotoUpload={uploadPhoto} photoFiles={photoFiles} photoInfo={photoInfo} uploadingPhoto={uploadingPhoto} />
                   <CustomFields definitions={customFieldDefinitions} values={formData.custom_fields} onChange={handleCustomFieldChange} />
                 </div>
