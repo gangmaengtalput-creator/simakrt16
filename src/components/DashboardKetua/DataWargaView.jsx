@@ -225,6 +225,7 @@ const PersonalDocumentsView = ({ values, supabase }) => {
 };
 
 const formatFileSize = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
+const formatRupiah = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 
 const DesilFields = ({ values, onChange, onPhotoChange, onPhotoUpload, photoFiles, photoInfo, uploadingPhoto }) => {
   const photoInputRefs = useRef({});
@@ -691,6 +692,12 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     setShowModal({ ...showModal, edit: true }); 
   };
 
+  const totalPendapatanBulanan = Number(selectedWarga?.pendapatan_kerja || 0) + Number(selectedWarga?.pendapatan_usaha || 0) + Number(selectedWarga?.pendapatan_pemberian || 0);
+  const totalPengeluaranBulanan = Number(selectedWarga?.pengeluaran_makan_mingguan || 0) * 52 / 12
+    + Number(selectedWarga?.pengeluaran_listrik_bulanan || 0)
+    + Number(selectedWarga?.pengeluaran_lain_bulanan || 0)
+    + Number(selectedWarga?.pengeluaran_tahunan || 0) / 12;
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 print:hidden">
       {/* HEADER */}
@@ -879,10 +886,10 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
               <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-5xl font-black shadow-xl border border-white/30 shrink-0 z-10 rotate-3">
                 {selectedWarga.nama?.charAt(0).toUpperCase()}
               </div>
-              <div className="z-10">
-                <h2 className="text-3xl sm:text-4xl font-black tracking-tight">{selectedWarga.nama}</h2>
-                <div className="flex items-center gap-3 mt-2 justify-center sm:justify-start">
-                  <span className="text-sm bg-black/20 px-3 py-1 rounded-lg font-mono tracking-wider backdrop-blur-sm border border-white/10">NIK: {selectedWarga.nik}</span>
+              <div className="z-10 min-w-0 w-full">
+                <h2 className="text-2xl sm:text-4xl font-black leading-tight break-words [overflow-wrap:anywhere]">{selectedWarga.nama}</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-2 justify-center sm:justify-start min-w-0">
+                  <span className="text-sm bg-black/20 px-3 py-1 rounded-lg font-mono break-all backdrop-blur-sm border border-white/10">NIK: {selectedWarga.nik}</span>
                   {selectedWarga.status_warga === 'mantan' && <span className="text-xs bg-red-500/90 text-white px-2 py-1 rounded-lg font-bold shadow-sm uppercase tracking-widest border border-red-400">Mantan Warga</span>}
                 </div>
               </div>
@@ -909,6 +916,8 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                     <h3 className="text-xs font-black text-gray-500 tracking-widest">DATA PERSONAL</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-y-4 gap-x-3 text-sm">
+                    <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Status Warga</p><p className="font-bold text-gray-800 capitalize">{selectedWarga.status_warga || '-'}</p></div>
+                    <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Tanggal Masuk</p><p className="font-bold text-gray-800">{selectedWarga.tanggal_masuk ? new Date(`${selectedWarga.tanggal_masuk}T00:00:00`).toLocaleDateString('id-ID') : '-'}</p></div>
                     <div className="col-span-2"><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Tempat, Tanggal Lahir</p><p className="font-bold text-gray-800">{selectedWarga.tempat_lahir || '-'}, {selectedWarga.tgl_lahir ? new Date(selectedWarga.tgl_lahir).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}) : '-'}</p></div>
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Usia</p><p className="font-black text-blue-600">{calculateAge(selectedWarga.tgl_lahir)} <span className="font-medium text-xs">Tahun</span></p></div>
                     <div><p className="text-[10px] text-gray-400 uppercase font-bold mb-0.5">Jenis Kelamin</p><p className="font-bold text-gray-800">{selectedWarga.jenis_kelamin || '-'}</p></div>
@@ -933,7 +942,45 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
 
                 <PersonalDocumentsView values={selectedWarga} supabase={supabase} />
 
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-cyan-100 sm:col-span-2"><h3 className="text-xs font-black text-cyan-700 tracking-widest mb-4">DATA DESIL</h3><div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[['foto_rumah_depan','Rumah depan'],['foto_ruang_tamu','Ruang tamu'],['foto_kamar_mandi','Kamar mandi']].map(([key, label]) => selectedWarga[key] ? <div key={key}><p className="text-xs font-bold text-gray-500 mb-1">{label}</p><img src={selectedWarga[key]} alt={label} className="w-full h-32 object-cover rounded-xl border" /></div> : <div key={key} className="h-32 rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-400">{label} belum ada</div>)}</div><div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4 text-sm"><div><span className="text-gray-400 block text-xs">Desil</span><strong>{selectedWarga.desil || '-'}</strong></div><div><span className="text-gray-400 block text-xs">ID PLN</span><strong>{selectedWarga.id_pln || '-'}</strong></div><div><span className="text-gray-400 block text-xs">ID PDAM</span><strong>{selectedWarga.id_pdam || '-'}</strong></div><div><span className="text-gray-400 block text-xs">Kepemilikan</span><strong>{selectedWarga.status_kepemilikan_rumah || '-'}</strong></div><div><span className="text-gray-400 block text-xs">Tabungan bulanan</span><strong>{Number(selectedWarga.pendapatan_kerja || 0) + Number(selectedWarga.pendapatan_usaha || 0) + Number(selectedWarga.pendapatan_pemberian || 0) > (Number(selectedWarga.pengeluaran_makan_mingguan || 0) * 52 / 12 + Number(selectedWarga.pengeluaran_listrik_bulanan || 0) + Number(selectedWarga.pengeluaran_lain_bulanan || 0) + Number(selectedWarga.pengeluaran_tahunan || 0) / 12) ? 'Ya' : 'Tidak'}</strong></div></div></div>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-cyan-100 sm:col-span-2">
+                  <h3 className="text-xs font-black text-cyan-700 tracking-widest mb-4">DATA DESIL</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      ['foto_rumah_depan', 'Rumah depan'],
+                      ['foto_ruang_tamu', 'Ruang tamu'],
+                      ['foto_kamar_mandi', 'Kamar mandi'],
+                    ].map(([key, label]) => selectedWarga[key]
+                      ? <div key={key}><p className="text-xs font-bold text-gray-500 mb-1">{label}</p><img src={selectedWarga[key]} alt={label} className="w-full h-32 object-cover rounded-xl border" /></div>
+                      : <div key={key} className="h-32 rounded-xl bg-gray-50 flex items-center justify-center text-xs text-gray-400">{label} belum ada</div>)}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 text-sm">
+                    <div><span className="text-gray-400 block text-xs">Desil</span><strong>{selectedWarga.desil || '-'}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">ID PLN</span><strong>{selectedWarga.id_pln || '-'}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">ID PDAM</span><strong>{selectedWarga.id_pdam || '-'}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Kepemilikan Rumah</span><strong>{selectedWarga.status_kepemilikan_rumah || '-'}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pendapatan Kerja / Bulan</span><strong>{formatRupiah(selectedWarga.pendapatan_kerja)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pendapatan Usaha / Bulan</span><strong>{formatRupiah(selectedWarga.pendapatan_usaha)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pendapatan Pemberian / Bulan</span><strong>{formatRupiah(selectedWarga.pendapatan_pemberian)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pengeluaran Makan / Minggu</span><strong>{formatRupiah(selectedWarga.pengeluaran_makan_mingguan)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pengeluaran Listrik / Bulan</span><strong>{formatRupiah(selectedWarga.pengeluaran_listrik_bulanan)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pengeluaran Lain / Bulan</span><strong>{formatRupiah(selectedWarga.pengeluaran_lain_bulanan)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Pengeluaran Tahunan</span><strong>{formatRupiah(selectedWarga.pengeluaran_tahunan)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Total Pendapatan / Bulan</span><strong>{formatRupiah(totalPendapatanBulanan)}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Perkiraan Pengeluaran / Bulan</span><strong>{formatRupiah(Math.round(totalPengeluaranBulanan))}</strong></div>
+                    <div><span className="text-gray-400 block text-xs">Tabungan Bulanan</span><strong>{totalPendapatanBulanan > totalPengeluaranBulanan ? 'Ya' : 'Tidak'}</strong></div>
+                  </div>
+                </div>
+
+                {customFieldDefinitions.length > 0 && <div className="bg-white p-5 rounded-2xl shadow-sm border border-violet-100 sm:col-span-2">
+                  <h3 className="text-xs font-black text-violet-700 tracking-widest mb-4">FIELD CUSTOM</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                    {customFieldDefinitions.map((field) => {
+                      const value = selectedWarga.custom_fields?.[field.field_key];
+                      const displayValue = typeof value === 'boolean' ? (value ? 'Ya' : 'Tidak') : value == null || value === '' ? '-' : value;
+                      return <div key={field.id}><span className="text-gray-400 block text-xs">{field.label}</span><strong>{displayValue}</strong></div>;
+                    })}
+                  </div>
+                </div>}
 
                 {selectedWarga.status_warga === 'mantan' && selectedWarga.alasan_hapus && (
                   <div className="bg-red-50 p-5 rounded-2xl border border-red-200 sm:col-span-2 relative overflow-hidden">
@@ -942,6 +989,7 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
                     </div>
                     <h3 className="text-xs font-black text-red-600 mb-2 tracking-widest">ALASAN MUTASI / PINDAH</h3>
                     <p className="font-bold text-red-800 text-base italic relative z-10">"{selectedWarga.alasan_hapus}"</p>
+                    <p className="text-xs text-red-700 mt-2">Tanggal keluar: {selectedWarga.tanggal_keluar ? new Date(`${selectedWarga.tanggal_keluar}T00:00:00`).toLocaleDateString('id-ID') : '-'}</p>
                   </div>
                 )}
 
