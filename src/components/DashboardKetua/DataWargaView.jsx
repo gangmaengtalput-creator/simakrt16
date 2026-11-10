@@ -413,6 +413,29 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
     if (error) throw error;
   };
 
+  const syncPersonalDocumentToHousehold = async (field, noKk, currentNik, filePath) => {
+    if (!noKk || !filePath) return;
+    if (field === 'dokumen_kk') {
+      const { error } = await supabase.from('master_warga').update({ dokumen_kk: filePath }).eq('no_kk', noKk);
+      if (error) throw error;
+      return;
+    }
+    if (field === 'dokumen_buku_nikah') {
+      const { data: household, error: householdError } = await supabase
+        .from('master_warga')
+        .select('nik, status_kk')
+        .eq('no_kk', noKk);
+      if (householdError) throw householdError;
+      const spouseRoles = new Set(['KEPALA KELUARGA', 'SUAMI', 'ISTRI']);
+      const spouseNiks = (household || [])
+        .filter((member) => spouseRoles.has(String(member.status_kk || '').trim().toUpperCase()))
+        .map((member) => member.nik);
+      if (!spouseNiks.some((nik) => String(nik) === String(currentNik))) spouseNiks.push(currentNik);
+      const { error } = await supabase.from('master_warga').update({ dokumen_buku_nikah: filePath }).in('nik', spouseNiks);
+      if (error) throw error;
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (name === 'nik') {
@@ -592,6 +615,8 @@ export default function DataWargaView({ setActiveView, dataWarga, fetchWarga }) 
       }
       const { error } = await supabase.from('master_warga').update(dataToUpdate).eq('nik', newNik);
       if (error) throw error;
+      await syncPersonalDocumentToHousehold('dokumen_kk', formData.no_kk, newNik, dataToUpdate.dokumen_kk);
+      await syncPersonalDocumentToHousehold('dokumen_buku_nikah', formData.no_kk, newNik, dataToUpdate.dokumen_buku_nikah);
       await syncDesilToKk(formData.no_kk, { ...formData, ...uploadedPhotos });
       setShowModal({ ...showModal, edit: false }); 
       setPhotoFiles({});
